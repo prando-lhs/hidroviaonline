@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hidrovia Online - Login</title>
+  <style>
+    :root {
+      --primary: #2ea6ff;
+      --dark: #0f1724;
+      --light: #e6f0ff;
+      --muted: #9fb0d0;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background-color: var(--dark);
+      color: var(--light);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-image: linear-gradient(rgba(15, 23, 36, 0.9), rgba(15, 23, 36, 0.9)), 
+                        url('https://agenciagov.ebc.com.br/noticias/202412/primeira-concessao-de-hidrovia-no-brasil-vai-triplicar-transporte-pelo-rio-paraguai/@@images/3e1aa1b5-759b-41e9-a5bd-4ccb656ff996.jpeg');
+      background-size: cover;
+    }
+    
+    .auth-container {
+      width: 90%;
+      max-width: 400px;
+      padding: 2rem;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+    
+    .logo {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .logo h1 {
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+    
+    .logo p {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    
+    input {
+      width: 100%;
+      padding: 0.75rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      color: var(--light);
+      font-size: 1rem;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    
+    button {
+      width: 100%;
+      padding: 0.75rem;
+      background: var(--primary);
+      color: #04202f;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 1rem;
+    }
+    
+    button:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+    
+    .demo-note {
+      margin-top: 1.5rem;
+      padding: 0.75rem;
+      background: rgba(46, 166, 255, 0.1);
+      border-radius: 8px;
+      border: 1px dashed var(--primary);
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    
+    .footer {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="logo">
+      <h1>Hidrovia Online</h1>
+      <p>Sistema de Monitoramento de Hidrovias</p>
+    </div>
+    
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" placeholder="usuario@exemplo.com" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="loginPassword">Senha</label>
+        <input type="password" id="loginPassword" placeholder="Digite sua senha" required>
+      </div>
+      
+      <button type="submit">Entrar no Sistema</button>
+      
+      <div class="demo-note">
+        <strong>MODO DEMO:</strong> Qualquer email/senha será aceito
+      </div>
+    </form>
+    
+    <div class="footer">
+      <p>© 2025 Hidrovia Online - Protótipo de Demonstração</p>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      // Simular login (qualquer dado é válido)
+      const email = document.getElementById('loginEmail').value.trim() || 'demo@hidrovia.com';
+      
+      // Armazenar em localStorage para simular sessão
+      localStorage.setItem('hidrovia_demo_user', email);
+      
+      // Redirecionar para a página principal
+      window.location.href = '../main/index.html';
+    });
+  </script>
+</body>
+</html>
