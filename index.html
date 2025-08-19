@@ -86,6 +86,38 @@
     </aside>
 
     <div id="map"></div>
+    <script>
+      // 1. Mapa Claro (OpenStreetMap padrão)
+    const claro = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    });
+
+    // 2. Mapa Escuro (Carto Dark)
+    const escuro = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap, © CARTO'
+    });
+
+    // 3. Satélite (Esri)
+    const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles © Esri'
+    });
+
+    // Define o estilo inicial (Claro)
+    claro.addTo(map);
+
+    // === Controle para alternar estilos ===
+    const baseMaps = {
+      "Claro": claro,
+      "Escuro": escuro,
+      "Satélite": satelite
+    };
+
+    L.control.layers(baseMaps).addTo(map);
+
+    // === Exemplo de marcador com popup ===
+    const marker = L.marker([-23.55, -46.63]).addTo(map);
+    marker.bindPopup("<b>São Paulo</b><br>Centro da cidade.");
+    </script>
     <div id="coords" 
         style="position:absolute; 
         bottom:10px; 
