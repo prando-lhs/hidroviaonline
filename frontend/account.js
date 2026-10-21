@@ -20,15 +20,4 @@
     status.textContent = 'Sessão indisponível — tente novamente';
     login.hidden = false;
   }
-  logout.addEventListener('click', async () => {
-    logout.disabled = true;
-    try {
-      const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
-      if (!response.ok) throw new Error('Não foi possível sair.');
-      window.location.href = '/login.html';
-    } catch {
-      status.textContent = 'Erro ao sair. Tente novamente.';
-      logout.disabled = false;
-    }
-  });
 })();
