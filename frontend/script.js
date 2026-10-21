@@ -212,7 +212,8 @@
       };
       try {
         const response = await fetch('/api/relatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(novo) });
-        if (response.ok) { relatos.push(await response.json()); }
+        if (response.ok) { const saved = await response.json(); toast('Relato enviado para análise da moderação.'); }
+        else if (response.status === 401) { toast('Faça login para enviar relatos.'); window.location.href = '/login.html'; return; }
         else if (response.status === 503) { relatos.push(novo); toast('Banco indisponível: relato salvo apenas neste navegador.'); }
         else { toast('Não foi possível salvar o relato no servidor.'); return; }
       } catch { relatos.push(novo); toast('Sem conexão: relato salvo apenas neste navegador.'); }
