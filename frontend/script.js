@@ -1,6 +1,4 @@
-alert("Bem-vindo ao sistema de monitoramento de hidrovias! Atenção: esta é uma versão de demonstração. Criado por Leonardo Henrique Sampaio Prando, Marinheiro-RM2.");
-    
-    /* ===================== Inicialização do mapa ===================== */
+/* ===================== Inicialização do mapa ===================== */
     const map = L.map('map', { zoomControl: true }).setView([-22.4955, -48.5715], 13);
     
     // Camadas base
@@ -38,7 +36,16 @@ alert("Bem-vindo ao sistema de monitoramento de hidrovias! Atenção: esta é um
     ];
     
     saveAll();
-    
+    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    async function carregarRelatos() {
+      try {
+        const response = await fetch('/api/relatos');
+        if (!response.ok) return;
+        const dados = await response.json();
+        if (Array.isArray(dados)) { relatos = dados; renderRelatos(); }
+      } catch (error) { console.warn('API indisponível; exibindo relatos locais.', error); }
+    }
+
     /* ===================== camadas e ícones ===================== */
     const layerBoias = L.layerGroup().addTo(map);
     const layerRelatos = L.layerGroup().addTo(map);
@@ -134,7 +141,7 @@ alert("Bem-vindo ao sistema de monitoramento de hidrovias! Atenção: esta é um
       snapped.forEach(b => {
         const icon = (b.estado && b.estado.toLowerCase().includes('boa')) ? iconBoiaOk : iconBoiaProb;
         const marker = L.marker([b.lat, b.lng], { icon }).addTo(layerBoias);
-        let html = `<div style="min-width:220px"><b>${b.nome}</b><br>Tipo: ${b.tipo} · Estado: ${b.estado || 'Indefinido'}<br>`;
+        let html = `<div style="min-width:220px"><b>${escapeHtml(b.nome)}</b><br>Tipo: ${escapeHtml(b.tipo)} · Estado: ${escapeHtml(b.estado || 'Indefinido')}<br>`;
         if (b.snapped) html += `<span class="muted">Snap ao canal: ${b.snapDist} m</span><br>`;
         else html += `<span style="color:#ffd595">Sem snap (distância alta)</span><br>`;
         html += `<div style="margin-top:8px"><button class="btn btn-primary" onclick="openReportFormAt([${b.lat}, ${b.lng}], 'BOIA_DANIFICADA', 'Problema em ${b.nome}')">Reportar problema nesta boia</button></div></div>`;
@@ -148,13 +155,14 @@ alert("Bem-vindo ao sistema de monitoramento de hidrovias! Atenção: esta é um
       relatos.forEach(r => {
         const icon = (r.tipo === 'BOIA_DANIFICADA') ? iconBoiaProb : iconPerigo;
         const m = L.marker([r.lat, r.lng], { icon }).addTo(layerRelatos);
-        const info = `<div style="min-width:240px"><b>${(r.titulo || labelTipo(r.tipo))}${r.gravidade ? ' · ' + r.gravidade : ''}</b><br>${r.descricao || ''}<br><span class="muted">Confirmações: ${r.confirmacoes || 0}</span><div class="hr"></div><div style="display:flex;gap:6px"><button class="btn btn-primary" onclick="validarRelato('${r.id}', true)">Sim, continua</button><button class="btn" onclick="validarRelato('${r.id}', false)">Não, resolvido</button></div></div>`;
+        const info = `<div style="min-width:240px"><b>${escapeHtml(r.titulo || labelTipo(r.tipo))}${r.gravidade ? ' · ' + escapeHtml(r.gravidade) : ''}</b><br>${escapeHtml(r.descricao || '')}<br><span class="muted">Confirmações: ${r.confirmacoes || 0}</span><div class="hr"></div><div style="display:flex;gap:6px"><button class="btn btn-primary" onclick="validarRelato('${r.id}', true)">Sim, continua</button><button class="btn" onclick="validarRelato('${r.id}', false)">Não, resolvido</button></div></div>`;
         m.bindPopup(info);
       });
     }
     
     renderBoias();
     renderRelatos();
+    carregarRelatos();
     
     /* ===================== Interação: Mostrar/Ocultar camadas ===================== */
     document.getElementById('btnBoias').onclick = function () {
@@ -184,7 +192,7 @@ alert("Bem-vindo ao sistema de monitoramento de hidrovias! Atenção: esta é um
       selectedLatLng = e.latlng;
       document.getElementById('selLatLng').textContent = selectedLatLng.lat.toFixed(6) + ', ' + selectedLatLng.lng.toFixed(6);
     });
-    document.getElementById('btnSalvar').onclick = function () {
+    document.getElementById('btnSalvar').onclick = async function () {
       if (!selectedLatLng) { toast('Selecione um ponto no mapa primeiro.'); return; }
       const t = document.getElementById('tipo').value;
       const g = document.getElementById('gravidade').value;
@@ -202,10 +210,16 @@ alert("Bem-vindo ao sistema de monitoramento de hidrovias! Atenção: esta é um
         confirmacoes: 0,
         atualizadoEm: Date.now()
       };
-      relatos.push(novo);
+      try {
+        const response = await fetch('/api/relatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(novo) });
+        if (response.ok) { relatos.push(await response.json()); }
+        else if (response.status === 503) { relatos.push(novo); toast('Banco indisponível: relato salvo apenas neste navegador.'); }
+        else { toast('Não foi possível salvar o relato no servidor.'); return; }
+      } catch { relatos.push(novo); toast('Sem conexão: relato salvo apenas neste navegador.'); }
+      selectedLatLng = null;
       saveAll();
       renderRelatos();
-      toast('Relato salvo.');
+      // Confirmação de armazenamento já é exibida nos casos sem conexão.
       addMode = false;
       document.getElementById('formWrap').style.display = 'none';
       document.getElementById('selLatLng').textContent = '-';
@@ -245,6 +259,7 @@ alert("Bem-vindo ao sistema de monitoramento de hidrovias! Atenção: esta é um
     function validarRelato(id, persiste) {
       const idx = relatos.findIndex(r => r.id === id);
       if (idx === -1) return;
+      if (relatos[idx]._id) { toast('Validação de relatos compartilhados será habilitada após autenticação.'); return; }
       if (persiste) {
         relatos[idx].confirmacoes = (relatos[idx].confirmacoes || 0) + 1;
         relatos[idx].atualizadoEm = Date.now();
@@ -298,18 +313,12 @@ alert("Bem-vindo ao sistema de monitoramento de hidrovias! Atenção: esta é um
     /* ===================== Ajuste inicial de zoom para exibir o trecho ===================== */
     map.fitBounds(canalLine.getBounds().pad(0.5));
     
-    // Mostra coordenadas no movimento do mouse
+    // Exibe coordenadas sem interromper a interação do usuário
     map.on('mousemove', function (e) {
-      document.getElementById('coords').innerText =
-        `Lat: ${e.latlng.lat.toFixed(6)} , Lng: ${e.latlng.lng.toFixed(6)}`;
+      document.getElementById('coords').textContent = `Lat: ${e.latlng.lat.toFixed(6)}, Lng: ${e.latlng.lng.toFixed(6)}`;
     });
     
-    // Mostra coordenadas ao clicar no mapa
-    map.on('click', function (e) {
-      alert(`Coordenadas clicadas:\nLat: ${e.latlng.lat.toFixed(6)}, Lng: ${e.latlng.lng.toFixed(6)}`);
-    });
-    
-    /* ===================== GPS com atualização automática ===================== */
+/* ===================== GPS com atualização automática ===================== */
     if (navigator.geolocation) {
       // Ícone azul simples
       const gpsIcon = L.divIcon({
@@ -319,13 +328,14 @@ alert("Bem-vindo ao sistema de monitoramento de hidrovias! Atenção: esta é um
       });
     
       // Cria marcador vazio
-      let gpsMarker = L.marker([0, 0], { icon: gpsIcon }).addTo(map);
+      let gpsMarker = null;
     
       navigator.geolocation.watchPosition(
         (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
-          gpsMarker.setLatLng([lat, lng]); // Atualiza somente o ponto
+          if (!gpsMarker) gpsMarker = L.marker([lat, lng], { icon: gpsIcon }).addTo(map);
+          else gpsMarker.setLatLng([lat, lng]);
         },
         (err) => {
           console.error("Erro ao obter localização:", err);
@@ -381,6 +391,6 @@ alert("Bem-vindo ao sistema de monitoramento de hidrovias! Atenção: esta é um
     // Função auxiliar para normalizePoint
     function normalizePoint(it) {
       // Implementação simplificada
-      if (it.lat && it.lng) return { lat: it.lat, lng: it.lng };
+      if (Number.isFinite(Number(it.lat)) && Number.isFinite(Number(it.lng))) return { lat: Number(it.lat), lng: Number(it.lng) };
       return null;
     }
