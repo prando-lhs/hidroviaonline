@@ -1,6 +1,4 @@
-alert("Bem-vindo ao sistema de monitoramento de hidrovias! Atenção: esta é uma versão de demonstração. Criado por Leonardo Henrique Sampaio Prando, Marinheiro-RM2.");
-    
-    /* ===================== Inicialização do mapa ===================== */
+/* ===================== Inicialização do mapa ===================== */
     const map = L.map('map', { zoomControl: true }).setView([-22.4955, -48.5715], 13);
     
     // Camadas base
@@ -203,6 +201,7 @@ alert("Bem-vindo ao sistema de monitoramento de hidrovias! Atenção: esta é um
         atualizadoEm: Date.now()
       };
       relatos.push(novo);
+      selectedLatLng = null;
       saveAll();
       renderRelatos();
       toast('Relato salvo.');
@@ -298,18 +297,12 @@ alert("Bem-vindo ao sistema de monitoramento de hidrovias! Atenção: esta é um
     /* ===================== Ajuste inicial de zoom para exibir o trecho ===================== */
     map.fitBounds(canalLine.getBounds().pad(0.5));
     
-    // Mostra coordenadas no movimento do mouse
+    // Exibe coordenadas sem interromper a interação do usuário
     map.on('mousemove', function (e) {
-      document.getElementById('coords').innerText =
-        `Lat: ${e.latlng.lat.toFixed(6)} , Lng: ${e.latlng.lng.toFixed(6)}`;
+      document.getElementById('coords').textContent = `Lat: ${e.latlng.lat.toFixed(6)}, Lng: ${e.latlng.lng.toFixed(6)}`;
     });
     
-    // Mostra coordenadas ao clicar no mapa
-    map.on('click', function (e) {
-      alert(`Coordenadas clicadas:\nLat: ${e.latlng.lat.toFixed(6)}, Lng: ${e.latlng.lng.toFixed(6)}`);
-    });
-    
-    /* ===================== GPS com atualização automática ===================== */
+/* ===================== GPS com atualização automática ===================== */
     if (navigator.geolocation) {
       // Ícone azul simples
       const gpsIcon = L.divIcon({
@@ -319,13 +312,14 @@ alert("Bem-vindo ao sistema de monitoramento de hidrovias! Atenção: esta é um
       });
     
       // Cria marcador vazio
-      let gpsMarker = L.marker([0, 0], { icon: gpsIcon }).addTo(map);
+      let gpsMarker = null;
     
       navigator.geolocation.watchPosition(
         (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
-          gpsMarker.setLatLng([lat, lng]); // Atualiza somente o ponto
+          if (!gpsMarker) gpsMarker = L.marker([lat, lng], { icon: gpsIcon }).addTo(map);
+          else gpsMarker.setLatLng([lat, lng]);
         },
         (err) => {
           console.error("Erro ao obter localização:", err);
@@ -381,6 +375,6 @@ alert("Bem-vindo ao sistema de monitoramento de hidrovias! Atenção: esta é um
     // Função auxiliar para normalizePoint
     function normalizePoint(it) {
       // Implementação simplificada
-      if (it.lat && it.lng) return { lat: it.lat, lng: it.lng };
+      if (Number.isFinite(Number(it.lat)) && Number.isFinite(Number(it.lng))) return { lat: Number(it.lat), lng: Number(it.lng) };
       return null;
     }
