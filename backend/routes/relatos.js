@@ -16,6 +16,7 @@ const relatoSchema = new mongoose.Schema({
   votos: [{ usuario: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, resposta: { type: String, enum: ['CONFIRMA', 'NAO_CONFIRMA'], required: true } }]
 }, { timestamps: true, optimisticConcurrency: true });
 
+relatoSchema.index({ status: 1, createdAt: -1 });
 const Relato = mongoose.models.Relato || mongoose.model('Relato', relatoSchema);
 router.use((req, res, next) => {
   if (mongoose.connection.readyState !== 1) return res.status(503).json({ error: 'Banco de dados indisponível.' });
@@ -25,7 +26,7 @@ router.use((req, res, next) => {
 router.get('/', async (_req, res) => {
   try {
     const items = await Relato.find({ status: 'ATIVO' }).sort({ createdAt: -1 }).limit(500).lean();
-    res.json(items.map(({ autor, votos, ...r }) => ({ ...r, id: String(r._id), atualizadoEm: r.updatedAt, confirmacoes: (votos || []).filter(v => v.resposta === 'CONFIRMA').length })));
+    res.json(items.map(({ autor, votos, __v, ...r }) => ({ ...r, id: String(r._id), atualizadoEm: r.updatedAt, confirmacoes: (votos || []).filter(v => v.resposta === 'CONFIRMA').length })));
   } catch { res.status(500).json({ error: 'Erro ao consultar relatos.' }); }
 });
 
@@ -43,7 +44,7 @@ router.post('/', authenticate, async (req, res) => {
 router.get('/moderacao', authenticate, adminOnly, async (_req, res) => {
   try {
     const items = await Relato.find({ status: 'PENDENTE' }).sort({ createdAt: 1 }).limit(200).lean();
-    res.json(items);
+    res.json(items.map(({ votos, __v, ...r }) => r));
   } catch { res.status(500).json({ error: 'Erro ao consultar moderação.' }); }
 });
 router.patch('/:id/status', authenticate, adminOnly, async (req, res) => {
