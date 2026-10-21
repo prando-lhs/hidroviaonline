@@ -36,7 +36,16 @@
     ];
     
     saveAll();
-    
+    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    async function carregarRelatos() {
+      try {
+        const response = await fetch('/api/relatos');
+        if (!response.ok) return;
+        const dados = await response.json();
+        if (Array.isArray(dados)) { relatos = dados; renderRelatos(); }
+      } catch (error) { console.warn('API indisponível; exibindo relatos locais.', error); }
+    }
+
     /* ===================== camadas e ícones ===================== */
     const layerBoias = L.layerGroup().addTo(map);
     const layerRelatos = L.layerGroup().addTo(map);
@@ -132,7 +141,7 @@
       snapped.forEach(b => {
         const icon = (b.estado && b.estado.toLowerCase().includes('boa')) ? iconBoiaOk : iconBoiaProb;
         const marker = L.marker([b.lat, b.lng], { icon }).addTo(layerBoias);
-        let html = `<div style="min-width:220px"><b>${b.nome}</b><br>Tipo: ${b.tipo} · Estado: ${b.estado || 'Indefinido'}<br>`;
+        let html = `<div style="min-width:220px"><b>${escapeHtml(b.nome)}</b><br>Tipo: ${escapeHtml(b.tipo)} · Estado: ${escapeHtml(b.estado || 'Indefinido')}<br>`;
         if (b.snapped) html += `<span class="muted">Snap ao canal: ${b.snapDist} m</span><br>`;
         else html += `<span style="color:#ffd595">Sem snap (distância alta)</span><br>`;
         html += `<div style="margin-top:8px"><button class="btn btn-primary" onclick="openReportFormAt([${b.lat}, ${b.lng}], 'BOIA_DANIFICADA', 'Problema em ${b.nome}')">Reportar problema nesta boia</button></div></div>`;
@@ -146,13 +155,14 @@
       relatos.forEach(r => {
         const icon = (r.tipo === 'BOIA_DANIFICADA') ? iconBoiaProb : iconPerigo;
         const m = L.marker([r.lat, r.lng], { icon }).addTo(layerRelatos);
-        const info = `<div style="min-width:240px"><b>${(r.titulo || labelTipo(r.tipo))}${r.gravidade ? ' · ' + r.gravidade : ''}</b><br>${r.descricao || ''}<br><span class="muted">Confirmações: ${r.confirmacoes || 0}</span><div class="hr"></div><div style="display:flex;gap:6px"><button class="btn btn-primary" onclick="validarRelato('${r.id}', true)">Sim, continua</button><button class="btn" onclick="validarRelato('${r.id}', false)">Não, resolvido</button></div></div>`;
+        const info = `<div style="min-width:240px"><b>${escapeHtml(r.titulo || labelTipo(r.tipo))}${r.gravidade ? ' · ' + escapeHtml(r.gravidade) : ''}</b><br>${escapeHtml(r.descricao || '')}<br><span class="muted">Confirmações: ${r.confirmacoes || 0}</span><div class="hr"></div><div style="display:flex;gap:6px"><button class="btn btn-primary" onclick="validarRelato('${r.id}', true)">Sim, continua</button><button class="btn" onclick="validarRelato('${r.id}', false)">Não, resolvido</button></div></div>`;
         m.bindPopup(info);
       });
     }
     
     renderBoias();
     renderRelatos();
+    carregarRelatos();
     
     /* ===================== Interação: Mostrar/Ocultar camadas ===================== */
     document.getElementById('btnBoias').onclick = function () {
@@ -182,7 +192,7 @@
       selectedLatLng = e.latlng;
       document.getElementById('selLatLng').textContent = selectedLatLng.lat.toFixed(6) + ', ' + selectedLatLng.lng.toFixed(6);
     });
-    document.getElementById('btnSalvar').onclick = function () {
+    document.getElementById('btnSalvar').onclick = async function () {
       if (!selectedLatLng) { toast('Selecione um ponto no mapa primeiro.'); return; }
       const t = document.getElementById('tipo').value;
       const g = document.getElementById('gravidade').value;
@@ -200,11 +210,16 @@
         confirmacoes: 0,
         atualizadoEm: Date.now()
       };
-      relatos.push(novo);
+      try {
+        const response = await fetch('/api/relatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(novo) });
+        if (response.ok) { relatos.push(await response.json()); }
+        else if (response.status === 503) { relatos.push(novo); toast('Banco indisponível: relato salvo apenas neste navegador.'); }
+        else { toast('Não foi possível salvar o relato no servidor.'); return; }
+      } catch { relatos.push(novo); toast('Sem conexão: relato salvo apenas neste navegador.'); }
       selectedLatLng = null;
       saveAll();
       renderRelatos();
-      toast('Relato salvo.');
+      // Confirmação de armazenamento já é exibida nos casos sem conexão.
       addMode = false;
       document.getElementById('formWrap').style.display = 'none';
       document.getElementById('selLatLng').textContent = '-';
