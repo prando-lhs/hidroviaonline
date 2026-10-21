@@ -65,3 +65,6 @@ As confirmações são registradas por usuário. Um usuário pode alterar sua re
 - Confirmações agora usam controle otimista de versão do Mongoose: edições simultâneas conflitantes recebem HTTP 409 para nova tentativa, em vez de sobrescrever silenciosamente votos.
 - Login/cadastro rejeitam e-mail que não seja texto; sessões excessivamente longas são recusadas.
 - **Não há testes end-to-end com MongoDB real nesta etapa.** O workflow não prova que cadastro, moderação e confirmações funcionam de ponta a ponta. Configurar banco isolado de testes e execução de navegador antes de publicar.
+
+## Publicação em nuvem (Etapa 12)
+A configuração para **MongoDB Atlas + Render** está documentada em [DEPLOY.md](DEPLOY.md), com `render.yaml` na raiz. Em hospedagem, `npm start` lê as variáveis do ambiente; para execução local com `backend/.env`, use `npm run dev` ou `npm run start:local`. A publicação e as credenciais ainda precisam ser configuradas na conta de hospedagem.
