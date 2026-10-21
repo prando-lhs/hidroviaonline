@@ -139,9 +139,8 @@
       
       <button type="submit">Entrar no Sistema</button>
       
-      <div class="demo-note">
-        <strong>MODO DEMO:</strong> Qualquer email/senha será aceito
-      </div>
+      <div class="demo-note" id="loginMessage" role="status">Entre com sua conta ou crie um cadastro.</div>
+      <button type="button" id="registerBtn" style="margin-top:12px;background:transparent;color:var(--primary);border:1px solid var(--primary)">Criar conta</button>
     </form>
     
     <div class="footer">
@@ -150,18 +149,23 @@
   </div>
 
   <script>
-    document.getElementById('loginForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      
-      // Simular login (qualquer dado é válido)
-      const email = document.getElementById('loginEmail').value.trim() || 'demo@hidrovia.com';
-      
-      // Armazenar em localStorage para simular sessão
-      localStorage.setItem('hidrovia_demo_user', email);
-      
-      // Redirecionar para a página principal
-      window.location.href = '/index.html';
-    });
+    const message = document.getElementById('loginMessage');
+    async function auth(path) {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      try {
+        const response = await fetch('/api/auth/' + path, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin', body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Falha na autenticação.');
+        if (path === 'login') window.location.href = '/index.html';
+        else message.textContent = 'Conta criada. Agora entre com seu e-mail e senha.';
+      } catch (error) { message.textContent = error.message; }
+    }
+    document.getElementById('loginForm').addEventListener('submit', e => { e.preventDefault(); auth('login'); });
+    document.getElementById('registerBtn').addEventListener('click', () => auth('register'));
   </script>
 </body>
 </html>
