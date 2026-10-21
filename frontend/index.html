@@ -9,36 +9,21 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="account.css">
   </head>
   <body>
 
-    <script>
-      /* Verificação de autenticação simulada
-      if (!localStorage.getItem('hidrovia_demo_user')) {
-        window.location.href = '/login.html';
-      }
-      */
-    </script>
-
-    <!-- Adicione este elemento para mostrar o usuário logado 
-    <div id="userBadge" style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.85);padding:5px 10px;border-radius:5px;z-index:1000;color:#000;font-size:14px;">
-      Usuário: <span id="userEmail"></span> | 
-      <a href="/login.html" onclick="localStorage.removeItem('hidrovia_demo_user')" style="color:#007bff;text-decoration:none">Sair</a>
-    </div>
--->
-    <script>
-      /* Mostrar email do usuário
-      document.getElementById('userEmail').textContent = localStorage.getItem('hidrovia_demo_user') || 'Demo';
-      
-      // Ocultar badge se não estiver em modo de desenvolvimento
-      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        document.getElementById('userBadge').style.display = 'none';
-      } */
-    </script>
+    <nav class="account-bar" aria-label="Conta e moderação">
+      <span id="accountStatus" role="status">Verificando sessão…</span>
+      <a id="accountLogin" href="/login.html" hidden>Entrar / Criar conta</a>
+      <a id="accountModeration" href="/moderacao.html" hidden>Moderação</a>
+      <button id="accountLogout" type="button" hidden>Sair</button>
+    </nav>
+    <script src="account.js" defer></script>
 
     <aside>
       <header>
-        <h1>Protótipo - Hidrovia Online</h1>
+        <h1>Hidrovia Online</h1>
         <div class="muted" style="margin-top:4px">Trecho: Barra Bonita — Jaú (aprox.)</div>
       </header>
 
