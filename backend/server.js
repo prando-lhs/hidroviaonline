@@ -9,6 +9,8 @@ const relatoRoutes = require('./routes/relatos');
 const authRoutes = require('./routes/auth');
 
 app.disable('x-powered-by');
+// Em produção, cookies Secure só devem ser enviados sobre HTTPS.
+app.set('trust proxy', process.env.NODE_ENV === 'production' ? 1 : false);
 app.use(express.json({ limit: '100kb' }));
 app.use((req, res, next) => {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
@@ -24,7 +26,8 @@ app.use('/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store')
 app.use(express.static(frontendDir));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', database: mongoose.connection.readyState === 1 ? 'connected' : 'not_connected' });
+  const connected = mongoose.connection.readyState === 1;
+  res.status(connected ? 200 : 503).json({ status: connected ? 'ok' : 'unavailable', database: connected ? 'connected' : 'not_connected' });
 });
 
 app.use('/api/auth', authRoutes);
@@ -37,6 +40,11 @@ app.use('/api', (_req, res) => {
 async function start() {
   if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
     console.error('Defina SESSION_SECRET com no mínimo 32 caracteres.');
+    process.exitCode = 1;
+    return;
+  }
+  if (process.env.NODE_ENV === 'production' && !process.env.MONGODB_URI?.startsWith('mongodb+srv://') && !process.env.MONGODB_URI?.startsWith('mongodb://')) {
+    console.error('MONGODB_URI inválida para produção.');
     process.exitCode = 1;
     return;
   }
