@@ -152,8 +152,29 @@
       relatos.forEach(r => {
         const icon = (r.tipo === 'BOIA_DANIFICADA') ? iconBoiaProb : iconPerigo;
         const m = L.marker([r.lat, r.lng], { icon }).addTo(layerRelatos);
-        const info = `<div style="min-width:240px"><b>${escapeHtml(r.titulo || labelTipo(r.tipo))}${r.gravidade ? ' · ' + escapeHtml(r.gravidade) : ''}</b><br>${escapeHtml(r.descricao || '')}<br><span class="muted">Confirmações: ${r.confirmacoes || 0}</span></div>`;
+        const info = `<div style="min-width:240px"><b>${escapeHtml(r.titulo || labelTipo(r.tipo))}${r.gravidade ? ' · ' + escapeHtml(r.gravidade) : ''}</b><br>${escapeHtml(r.descricao || '')}<br><span class="muted">Confirmações: ${Number(r.confirmacoes) || 0}</span><div style="display:flex;gap:6px;margin-top:10px"><button class="btn btn-primary" type="button" data-resposta="CONFIRMA">Continua</button><button class="btn" type="button" data-resposta="NAO_CONFIRMA">Não continua</button></div></div>`;
         m.bindPopup(info);
+        m.on('popupopen', () => {
+          const root = m.getPopup().getElement();
+          root.querySelectorAll('[data-resposta]').forEach(button => {
+            button.addEventListener('click', async () => {
+              button.disabled = true;
+              try {
+                const response = await fetch('/api/relatos/' + encodeURIComponent(r.id) + '/confirmacao', {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ resposta: button.dataset.resposta })
+                });
+                const result = await response.json();
+                if (response.status === 401) { toast('Faça login para confirmar relatos.'); window.location.href = '/login.html'; return; }
+                if (!response.ok) throw new Error(result.error || 'Falha ao confirmar relato.');
+                r.confirmacoes = result.confirmacoes;
+                toast('Confirmação registrada.');
+                m.closePopup();
+                renderRelatos();
+              } catch (error) { toast(error.message); button.disabled = false; }
+            });
+          });
+        });
       });
     }
     

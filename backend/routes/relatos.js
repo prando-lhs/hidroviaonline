@@ -12,7 +12,8 @@ const relatoSchema = new mongoose.Schema({
   lng: { type: Number, required: true, min: -180, max: 180 },
   status: { type: String, enum: ['PENDENTE', 'ATIVO', 'RESOLVIDO', 'REJEITADO'], default: 'PENDENTE' },
   confirmacoes: { type: Number, default: 0, min: 0 },
-  autor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+  autor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  votos: [{ usuario: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, resposta: { type: String, enum: ['CONFIRMA', 'NAO_CONFIRMA'], required: true } }]
 }, { timestamps: true });
 
 const Relato = mongoose.models.Relato || mongoose.model('Relato', relatoSchema);
@@ -24,7 +25,7 @@ router.use((req, res, next) => {
 router.get('/', async (_req, res) => {
   try {
     const items = await Relato.find({ status: 'ATIVO' }).sort({ createdAt: -1 }).limit(500).lean();
-    res.json(items.map(({ autor, ...r }) => ({ ...r, id: String(r._id), atualizadoEm: r.updatedAt })));
+    res.json(items.map(({ autor, votos, ...r }) => ({ ...r, id: String(r._id), atualizadoEm: r.updatedAt, confirmacoes: (votos || []).filter(v => v.resposta === 'CONFIRMA').length })));
   } catch { res.status(500).json({ error: 'Erro ao consultar relatos.' }); }
 });
 
@@ -54,5 +55,21 @@ router.patch('/:id/status', authenticate, adminOnly, async (req, res) => {
     if (!item) return res.status(404).json({ error: 'Relato não encontrado.' });
     res.json({ id: String(item._id), status: item.status });
   } catch { res.status(500).json({ error: 'Erro ao atualizar relato.' }); }
+});
+router.post('/:id/confirmacao', authenticate, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id) || !['CONFIRMA', 'NAO_CONFIRMA'].includes(req.body?.resposta))
+    return res.status(400).json({ error: 'ID ou resposta inválida.' });
+  try {
+    const relato = await Relato.findOne({ _id: req.params.id, status: 'ATIVO' });
+    if (!relato) return res.status(404).json({ error: 'Relato ativo não encontrado.' });
+    const userId = String(req.user._id);
+    if (String(relato.autor) === userId) return res.status(403).json({ error: 'Não é permitido confirmar o próprio relato.' });
+    const index = relato.votos.findIndex(v => String(v.usuario) === userId);
+    if (index >= 0) relato.votos[index].resposta = req.body.resposta;
+    else relato.votos.push({ usuario: req.user._id, resposta: req.body.resposta });
+    relato.confirmacoes = relato.votos.filter(v => v.resposta === 'CONFIRMA').length;
+    await relato.save();
+    res.json({ id: String(relato._id), confirmacoes: relato.confirmacoes, minhaResposta: req.body.resposta });
+  } catch { res.status(500).json({ error: 'Não foi possível registrar a confirmação.' }); }
 });
 module.exports = router;

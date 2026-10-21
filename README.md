@@ -44,6 +44,7 @@ Confirme a identidade e o e-mail do titular antes da promoção. A aplicação n
 - `POST /api/auth/logout` — sair
 - `GET /api/relatos` — relatos aprovados
 - `POST /api/relatos` — criar relato pendente (autenticado)
+- `POST /api/relatos/:id/confirmacao` — confirmar ou contestar relato ativo (autenticado, uma resposta por usuário, autor não pode votar)
 - `GET /api/relatos/moderacao` — pendentes (admin)
 - `PATCH /api/relatos/:id/status` — aprovar/rejeitar/resolver (admin)
 
@@ -54,3 +55,6 @@ Confirme a identidade e o e-mail do titular antes da promoção. A aplicação n
 - Implementar sincronização offline confiável, testes de integração e precisão dos dados náuticos.
 - Remover `backend/node_modules` já rastreado do repositório.
 - Validar instalação/execução em ambiente real; não houve testes integrados nesta revisão.
+
+## Etapa 4 — confirmação comunitária
+As confirmações são registradas por usuário. Um usuário pode alterar sua resposta, mas não multiplicar votos; o autor não pode votar no próprio relato. Respostas `NAO_CONFIRMA` não encerram automaticamente o relato: a moderação continua responsável pelo status. **Testes integrados com MongoDB ainda são necessários.**
