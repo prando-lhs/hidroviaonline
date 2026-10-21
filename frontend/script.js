@@ -195,7 +195,7 @@
     renderRelatos();
     carregarRelatos();
     // Atualiza somente enquanto a página está visível; evita requisições simultâneas.
-    const intervaloRelatos = setInterval(() => {
+    setInterval(() => {
       if (!document.hidden) carregarRelatos({ silencioso: true });
     }, 60000);
     document.addEventListener('visibilitychange', () => {
