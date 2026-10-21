@@ -39,3 +39,14 @@ test('rotas de API não devem ser armazenadas em cache', async () => {
     assert.match(response.headers.get('cache-control'), /no-store/);
   });
 });
+
+test('health retorna 503 quando o banco de dados está desconectado', async () => {
+  assert.notEqual(mongoose.connection.readyState, 1);
+  await withServer(async base => {
+    const response = await fetch(base + '/api/health');
+    assert.equal(response.status, 503);
+    const data = await response.json();
+    assert.equal(data.database, 'not_connected');
+    assert.equal(data.status, 'unavailable');
+  });
+});
