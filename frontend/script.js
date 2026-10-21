@@ -31,19 +31,16 @@
     ];
     
     // carregar relatos do localStorage (mantemos protótipo)
-    let relatos = JSON.parse(localStorage.getItem('relatos') || 'null') || [
-      { id: uid(), tipo: 'PERIGO', titulo: 'Tronco submerso', descricao: 'Visível na margem esquerda em baixa vazão', gravidade: 'ALTA', lat: -22.5002, lng: -48.5668, status: 'ATIVO', confirmacoes: 0, atualizadoEm: Date.now() }
-    ];
+    let relatos = [];
     
-    saveAll();
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     async function carregarRelatos() {
       try {
         const response = await fetch('/api/relatos');
-        if (!response.ok) return;
+        if (!response.ok) { toast('Relatos indisponíveis: verifique a conexão com o servidor.'); return; }
         const dados = await response.json();
         if (Array.isArray(dados)) { relatos = dados; renderRelatos(); }
-      } catch (error) { console.warn('API indisponível; exibindo relatos locais.', error); }
+      } catch (error) { console.warn('API indisponível.', error); toast('Não foi possível carregar os relatos.'); }
     }
 
     /* ===================== camadas e ícones ===================== */
@@ -214,13 +211,11 @@
         const response = await fetch('/api/relatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(novo) });
         if (response.ok) { const saved = await response.json(); toast('Relato enviado para análise da moderação.'); }
         else if (response.status === 401) { toast('Faça login para enviar relatos.'); window.location.href = '/login.html'; return; }
-        else if (response.status === 503) { relatos.push(novo); toast('Banco indisponível: relato salvo apenas neste navegador.'); }
+        else if (response.status === 503) { toast('Servidor indisponível. Relato não enviado; tente novamente.'); return; }
         else { toast('Não foi possível salvar o relato no servidor.'); return; }
-      } catch { relatos.push(novo); toast('Sem conexão: relato salvo apenas neste navegador.'); }
+      } catch { toast('Sem conexão. Relato não enviado; tente novamente.'); return; }
       selectedLatLng = null;
-      saveAll();
       renderRelatos();
-      // Confirmação de armazenamento já é exibida nos casos sem conexão.
       addMode = false;
       document.getElementById('formWrap').style.display = 'none';
       document.getElementById('selLatLng').textContent = '-';
