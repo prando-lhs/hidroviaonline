@@ -24,7 +24,7 @@ router.use((req, res, next) => {
 router.get('/', async (_req, res) => {
   try {
     const items = await Relato.find({ status: 'ATIVO' }).sort({ createdAt: -1 }).limit(500).lean();
-    res.json(items.map(r => ({ ...r, id: String(r._id), atualizadoEm: r.updatedAt })));
+    res.json(items.map(({ autor, ...r }) => ({ ...r, id: String(r._id), atualizadoEm: r.updatedAt })));
   } catch { res.status(500).json({ error: 'Erro ao consultar relatos.' }); }
 });
 
@@ -32,7 +32,7 @@ router.post('/', authenticate, async (req, res) => {
   try {
     const { tipo, titulo, descricao, gravidade, lat, lng } = req.body || {};
     const r = await Relato.create({ tipo, titulo, descricao, gravidade, lat, lng, autor: req.user._id });
-    res.status(201).json({ ...r.toObject(), id: String(r._id), atualizadoEm: r.updatedAt });
+    res.status(201).json({ id: String(r._id), status: r.status, atualizadoEm: r.updatedAt });
   } catch (err) {
     if (err.name === 'ValidationError' || err.name === 'CastError') return res.status(400).json({ error: 'Dados inválidos.', details: Object.keys(err.errors || {}) });
     res.status(500).json({ error: 'Erro ao salvar relato.' });
