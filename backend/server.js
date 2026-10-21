@@ -6,15 +6,27 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const frontendDir = path.resolve(__dirname, '../frontend');
 const relatoRoutes = require('./routes/relatos');
+const authRoutes = require('./routes/auth');
 
 app.disable('x-powered-by');
 app.use(express.json({ limit: '100kb' }));
+app.use((req, res, next) => {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+  const origin = req.get('origin');
+  const host = req.get('host');
+  if (origin) {
+    try { if (new URL(origin).host !== host) return res.status(403).json({ error: 'Origem não autorizada.' }); }
+    catch { return res.status(403).json({ error: 'Origem inválida.' }); }
+  }
+  next();
+});
 app.use(express.static(frontendDir));
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', database: mongoose.connection.readyState === 1 ? 'connected' : 'not_connected' });
 });
 
+app.use('/api/auth', authRoutes);
 app.use('/api/relatos', relatoRoutes);
 
 app.use('/api', (_req, res) => {
@@ -22,6 +34,11 @@ app.use('/api', (_req, res) => {
 });
 
 async function start() {
+  if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
+    console.error('Defina SESSION_SECRET com no mínimo 32 caracteres.');
+    process.exitCode = 1;
+    return;
+  }
   if (process.env.MONGODB_URI) {
     try {
       await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
