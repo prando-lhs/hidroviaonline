@@ -36,9 +36,13 @@
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     let carregamentoEmAndamento = false;
     let avisoDeFalhaExibido = false;
+    const relatosStatus = document.getElementById('relatosStatus');
+    const btnAtualizarRelatos = document.getElementById('btnAtualizarRelatos');
     async function carregarRelatos({ silencioso = false } = {}) {
       if (carregamentoEmAndamento) return;
       carregamentoEmAndamento = true;
+      btnAtualizarRelatos.disabled = true;
+      relatosStatus.textContent = 'Atualizando relatos…';
       try {
         const response = await fetch('/api/relatos', { cache: 'no-store' });
         if (!response.ok) throw new Error('Falha ao consultar relatos.');
@@ -46,13 +50,16 @@
         if (!Array.isArray(dados)) throw new Error('Resposta inválida do servidor.');
         relatos = dados;
         renderRelatos();
+        relatosStatus.textContent = `${dados.length} relato(s) ativo(s) · atualizado às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
         avisoDeFalhaExibido = false;
       } catch (error) {
         console.warn('API indisponível.', error);
+        relatosStatus.textContent = 'Falha ao atualizar · últimos relatos preservados';
         if (!silencioso || !avisoDeFalhaExibido) toast('Não foi possível atualizar os relatos. Mantendo os últimos dados carregados.');
         avisoDeFalhaExibido = true;
       } finally {
         carregamentoEmAndamento = false;
+        btnAtualizarRelatos.disabled = false;
       }
     }
 
@@ -194,6 +201,7 @@
     renderBoias();
     renderRelatos();
     carregarRelatos();
+    btnAtualizarRelatos.addEventListener('click', () => carregarRelatos());
     // Atualiza somente enquanto a página está visível; evita requisições simultâneas.
     setInterval(() => {
       if (!document.hidden) carregarRelatos({ silencioso: true });
