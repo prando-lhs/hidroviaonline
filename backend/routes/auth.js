@@ -2,8 +2,19 @@ const express = require('express');
 const mongoose = require('mongoose');
 const { User, hashPassword, verifyPassword, sign, authenticate, sessionCookie } = require('../auth');
 const router = express.Router();
+const attempts = new Map();
+function throttle(req, res, next) {
+  const key = req.ip || 'unknown';
+  const now = Date.now();
+  const entry = attempts.get(key) || { count: 0, reset: now + 15 * 60000 };
+  if (entry.reset < now) { entry.count = 0; entry.reset = now + 15 * 60000; }
+  entry.count++;
+  attempts.set(key, entry);
+  if (entry.count > 20) return res.status(429).json({ error: 'Muitas tentativas. Aguarde 15 minutos.' });
+  next();
+}
 router.use((req, res, next) => mongoose.connection.readyState === 1 ? next() : res.status(503).json({ error: 'Banco indisponível.' }));
-router.post('/register', async (req, res) => {
+router.post('/register', throttle, async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   const password = req.body?.password;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || typeof password !== 'string' || password.length < 12 || password.length > 128)
@@ -13,7 +24,7 @@ router.post('/register', async (req, res) => {
     res.status(201).json({ message: 'Conta criada. Faça login.' });
   } catch (err) { res.status(err.code === 11000 ? 409 : 500).json({ error: err.code === 11000 ? 'E-mail já cadastrado.' : 'Erro ao cadastrar.' }); }
 });
-router.post('/login', async (req, res) => {
+router.post('/login', throttle, async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   const password = req.body?.password;
   if (typeof password !== 'string' || email.length > 254) return res.status(401).json({ error: 'Credenciais inválidas.' });
