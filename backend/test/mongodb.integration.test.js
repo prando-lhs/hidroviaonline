@@ -55,11 +55,18 @@ test('fluxo real: cadastro, login, moderação e confirmação no MongoDB', { sk
     const queue = await request('/api/relatos/moderacao', 'GET', undefined, moderator.cookie);
     assert.equal(queue.response.status, 200);
     assert.ok(queue.data.some(item => String(item._id) === id));
+    const pending = queue.data.find(item => String(item._id) === id);
+    assert.equal(Object.hasOwn(pending, 'votos'), false, 'A fila de moderação não deve expor votos individuais.');
+    assert.equal(Object.hasOwn(pending, '__v'), false);
 
     const approved = await request('/api/relatos/' + id + '/status', 'PATCH', { status: 'ATIVO' }, moderator.cookie);
     assert.equal(approved.response.status, 200);
     const publicAfter = await request('/api/relatos');
     assert.ok(publicAfter.data.some(item => item.id === id));
+    const visible = publicAfter.data.find(item => item.id === id);
+    assert.equal(Object.hasOwn(visible, 'votos'), false);
+    assert.equal(Object.hasOwn(visible, 'autor'), false);
+    assert.equal(Object.hasOwn(visible, '__v'), false);
 
     const selfVote = await request('/api/relatos/' + id + '/confirmacao', 'POST', { resposta: 'CONFIRMA' }, author.cookie);
     assert.equal(selfVote.response.status, 403);
