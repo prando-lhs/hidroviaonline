@@ -259,6 +259,7 @@
     function validarRelato(id, persiste) {
       const idx = relatos.findIndex(r => r.id === id);
       if (idx === -1) return;
+      if (relatos[idx]._id) { toast('Validação de relatos compartilhados será habilitada após autenticação.'); return; }
       if (persiste) {
         relatos[idx].confirmacoes = (relatos[idx].confirmacoes || 0) + 1;
         relatos[idx].atualizadoEm = Date.now();
