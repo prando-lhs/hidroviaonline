@@ -58,3 +58,10 @@ Confirme a identidade e o e-mail do titular antes da promoção. A aplicação n
 
 ## Etapa 4 — confirmação comunitária
 As confirmações são registradas por usuário. Um usuário pode alterar sua resposta, mas não multiplicar votos; o autor não pode votar no próprio relato. Respostas `NAO_CONFIRMA` não encerram automaticamente o relato: a moderação continua responsável pelo status. **Testes integrados com MongoDB ainda são necessários.**
+
+## Etapa 5 — verificação de integração e robustez
+- O workflow da etapa 4 concluiu com sucesso no GitHub Actions (run 39535378046).
+- Testes HTTP adicionados para API sem MongoDB, bloqueio de origem cruzada, 404 e cabeçalhos anti-cache.
+- Confirmações agora usam controle otimista de versão do Mongoose: edições simultâneas conflitantes recebem HTTP 409 para nova tentativa, em vez de sobrescrever silenciosamente votos.
+- Login/cadastro rejeitam e-mail que não seja texto; sessões excessivamente longas são recusadas.
+- **Não há testes end-to-end com MongoDB real nesta etapa.** O workflow não prova que cadastro, moderação e confirmações funcionam de ponta a ponta. Configurar banco isolado de testes e execução de navegador antes de publicar.
