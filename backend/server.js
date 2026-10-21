@@ -20,6 +20,7 @@ app.use((req, res, next) => {
   }
   next();
 });
+app.use('/api', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 app.use(express.static(frontendDir));
 
 app.get('/api/health', (_req, res) => {
@@ -49,7 +50,9 @@ async function start() {
       return;
     }
   } else {
-    console.warn('MONGODB_URI ausente: iniciando sem banco de dados (modo protótipo).');
+    console.error('MONGODB_URI não configurada. Configure o MongoDB antes de iniciar.');
+    process.exitCode = 1;
+    return;
   }
 
   app.listen(PORT, () => console.log(`Hidrovia Online: http://localhost:${PORT}`));
