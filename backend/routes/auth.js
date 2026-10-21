@@ -15,7 +15,7 @@ function throttle(req, res, next) {
 }
 router.use((req, res, next) => mongoose.connection.readyState === 1 ? next() : res.status(503).json({ error: 'Banco indisponível.' }));
 router.post('/register', throttle, async (req, res) => {
-  const email = String(req.body?.email || '').trim().toLowerCase();
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   const password = req.body?.password;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || typeof password !== 'string' || password.length < 12 || password.length > 128)
     return res.status(400).json({ error: 'Informe e-mail válido e senha de 12 a 128 caracteres.' });
@@ -25,7 +25,7 @@ router.post('/register', throttle, async (req, res) => {
   } catch (err) { res.status(err.code === 11000 ? 409 : 500).json({ error: err.code === 11000 ? 'E-mail já cadastrado.' : 'Erro ao cadastrar.' }); }
 });
 router.post('/login', throttle, async (req, res) => {
-  const email = String(req.body?.email || '').trim().toLowerCase();
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   const password = req.body?.password;
   if (typeof password !== 'string' || email.length > 254) return res.status(401).json({ error: 'Credenciais inválidas.' });
   try {
@@ -39,7 +39,7 @@ router.post('/login', throttle, async (req, res) => {
 });
 router.get('/me', authenticate, (req, res) => res.json({ email: req.user.email, role: req.user.role }));
 router.post('/logout', (_req, res) => {
-  res.setHeader('Set-Cookie', 'hidrovia_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
+  res.setHeader('Set-Cookie', 'hidrovia_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0' + (process.env.NODE_ENV === 'production' ? '; Secure' : ''));
   res.json({ message: 'Sessão encerrada.' });
 });
 module.exports = router;

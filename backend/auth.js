@@ -33,6 +33,7 @@ const parseCookie = req => {
 const authenticate = async (req, res, next) => {
   if (!secret() || secret().length < 32) return res.status(503).json({ error: 'SESSION_SECRET não configurado.' });
   const token = parseCookie(req);
+  if (token.length > 4096) return res.status(401).json({ error: 'Sessão inválida.' });
   const [data, signature] = token.split('.');
   if (!data || !signature) return res.status(401).json({ error: 'Faça login para continuar.' });
   const mac = crypto.createHmac('sha256', secret()).update(data).digest('base64url');

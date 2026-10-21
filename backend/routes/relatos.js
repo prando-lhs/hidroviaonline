@@ -14,7 +14,7 @@ const relatoSchema = new mongoose.Schema({
   confirmacoes: { type: Number, default: 0, min: 0 },
   autor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   votos: [{ usuario: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, resposta: { type: String, enum: ['CONFIRMA', 'NAO_CONFIRMA'], required: true } }]
-}, { timestamps: true });
+}, { timestamps: true, optimisticConcurrency: true });
 
 const Relato = mongoose.models.Relato || mongoose.model('Relato', relatoSchema);
 router.use((req, res, next) => {
@@ -70,6 +70,9 @@ router.post('/:id/confirmacao', authenticate, async (req, res) => {
     relato.confirmacoes = relato.votos.filter(v => v.resposta === 'CONFIRMA').length;
     await relato.save();
     res.json({ id: String(relato._id), confirmacoes: relato.confirmacoes, minhaResposta: req.body.resposta });
-  } catch { res.status(500).json({ error: 'Não foi possível registrar a confirmação.' }); }
+  } catch (error) {
+    if (error.name === 'VersionError') return res.status(409).json({ error: 'O relato recebeu outra confirmação. Atualize e tente novamente.' });
+    res.status(500).json({ error: 'Não foi possível registrar a confirmação.' });
+  }
 });
 module.exports = router;
