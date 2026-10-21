@@ -34,13 +34,26 @@
     let relatos = [];
     
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    async function carregarRelatos() {
+    let carregamentoEmAndamento = false;
+    let avisoDeFalhaExibido = false;
+    async function carregarRelatos({ silencioso = false } = {}) {
+      if (carregamentoEmAndamento) return;
+      carregamentoEmAndamento = true;
       try {
-        const response = await fetch('/api/relatos');
-        if (!response.ok) { toast('Relatos indisponíveis: verifique a conexão com o servidor.'); return; }
+        const response = await fetch('/api/relatos', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Falha ao consultar relatos.');
         const dados = await response.json();
-        if (Array.isArray(dados)) { relatos = dados; renderRelatos(); }
-      } catch (error) { console.warn('API indisponível.', error); toast('Não foi possível carregar os relatos.'); }
+        if (!Array.isArray(dados)) throw new Error('Resposta inválida do servidor.');
+        relatos = dados;
+        renderRelatos();
+        avisoDeFalhaExibido = false;
+      } catch (error) {
+        console.warn('API indisponível.', error);
+        if (!silencioso || !avisoDeFalhaExibido) toast('Não foi possível atualizar os relatos. Mantendo os últimos dados carregados.');
+        avisoDeFalhaExibido = true;
+      } finally {
+        carregamentoEmAndamento = false;
+      }
     }
 
     /* ===================== camadas e ícones ===================== */
@@ -181,6 +194,13 @@
     renderBoias();
     renderRelatos();
     carregarRelatos();
+    // Atualiza somente enquanto a página está visível; evita requisições simultâneas.
+    const intervaloRelatos = setInterval(() => {
+      if (!document.hidden) carregarRelatos({ silencioso: true });
+    }, 60000);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) carregarRelatos({ silencioso: true });
+    });
     
     /* ===================== Interação: Mostrar/Ocultar camadas ===================== */
     document.getElementById('btnBoias').onclick = function () {
