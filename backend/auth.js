@@ -31,7 +31,7 @@ const parseCookie = req => {
   return part ? part.slice('hidrovia_session='.length) : '';
 };
 const authenticate = async (req, res, next) => {
-  if (!secret()) return res.status(503).json({ error: 'SESSION_SECRET não configurado.' });
+  if (!secret() || secret().length < 32) return res.status(503).json({ error: 'SESSION_SECRET não configurado.' });
   const token = parseCookie(req);
   const [data, signature] = token.split('.');
   if (!data || !signature) return res.status(401).json({ error: 'Faça login para continuar.' });

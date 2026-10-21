@@ -30,20 +30,17 @@
       { id: 'B-ESP-02', nome: 'ESP-02', tipo: 'ESP', estado: 'Boa', lat: -22.504766, lng: -48.583882 },
     ];
     
-    // carregar relatos do localStorage (mantemos protótipo)
-    let relatos = JSON.parse(localStorage.getItem('relatos') || 'null') || [
-      { id: uid(), tipo: 'PERIGO', titulo: 'Tronco submerso', descricao: 'Visível na margem esquerda em baixa vazão', gravidade: 'ALTA', lat: -22.5002, lng: -48.5668, status: 'ATIVO', confirmacoes: 0, atualizadoEm: Date.now() }
-    ];
+    // Relatos públicos são carregados exclusivamente pela API.
+    let relatos = [];
     
-    saveAll();
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     async function carregarRelatos() {
       try {
         const response = await fetch('/api/relatos');
-        if (!response.ok) return;
+        if (!response.ok) { toast('Relatos indisponíveis: verifique a conexão com o servidor.'); return; }
         const dados = await response.json();
         if (Array.isArray(dados)) { relatos = dados; renderRelatos(); }
-      } catch (error) { console.warn('API indisponível; exibindo relatos locais.', error); }
+      } catch (error) { console.warn('API indisponível.', error); toast('Não foi possível carregar os relatos.'); }
     }
 
     /* ===================== camadas e ícones ===================== */
@@ -155,7 +152,7 @@
       relatos.forEach(r => {
         const icon = (r.tipo === 'BOIA_DANIFICADA') ? iconBoiaProb : iconPerigo;
         const m = L.marker([r.lat, r.lng], { icon }).addTo(layerRelatos);
-        const info = `<div style="min-width:240px"><b>${escapeHtml(r.titulo || labelTipo(r.tipo))}${r.gravidade ? ' · ' + escapeHtml(r.gravidade) : ''}</b><br>${escapeHtml(r.descricao || '')}<br><span class="muted">Confirmações: ${r.confirmacoes || 0}</span><div class="hr"></div><div style="display:flex;gap:6px"><button class="btn btn-primary" onclick="validarRelato('${r.id}', true)">Sim, continua</button><button class="btn" onclick="validarRelato('${r.id}', false)">Não, resolvido</button></div></div>`;
+        const info = `<div style="min-width:240px"><b>${escapeHtml(r.titulo || labelTipo(r.tipo))}${r.gravidade ? ' · ' + escapeHtml(r.gravidade) : ''}</b><br>${escapeHtml(r.descricao || '')}<br><span class="muted">Confirmações: ${r.confirmacoes || 0}</span></div>`;
         m.bindPopup(info);
       });
     }
@@ -214,13 +211,11 @@
         const response = await fetch('/api/relatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(novo) });
         if (response.ok) { const saved = await response.json(); toast('Relato enviado para análise da moderação.'); }
         else if (response.status === 401) { toast('Faça login para enviar relatos.'); window.location.href = '/login.html'; return; }
-        else if (response.status === 503) { relatos.push(novo); toast('Banco indisponível: relato salvo apenas neste navegador.'); }
+        else if (response.status === 503) { toast('Servidor indisponível. Relato não enviado; tente novamente.'); return; }
         else { toast('Não foi possível salvar o relato no servidor.'); return; }
-      } catch { relatos.push(novo); toast('Sem conexão: relato salvo apenas neste navegador.'); }
+      } catch { toast('Sem conexão. Relato não enviado; tente novamente.'); return; }
       selectedLatLng = null;
-      saveAll();
       renderRelatos();
-      // Confirmação de armazenamento já é exibida nos casos sem conexão.
       addMode = false;
       document.getElementById('formWrap').style.display = 'none';
       document.getElementById('selLatLng').textContent = '-';
@@ -282,9 +277,7 @@
       return 'id-' + Math.random().toString(36).substring(2, 10);
     }
     
-    function saveAll() {
-      localStorage.setItem('relatos', JSON.stringify(relatos));
-    }
+    function saveAll() { /* Persistência e moderação ocorrem no servidor. */ }
     
     // toast simples
     let toastEl = null, toastTimer = null;
