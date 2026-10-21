@@ -5,6 +5,8 @@ const { app } = require('../server');
 const { User } = require('../auth');
 
 test('fluxo real: cadastro, login, moderação e confirmação no MongoDB', { skip: !process.env.MONGODB_TEST_URI }, async () => {
+  const databaseName = new URL(process.env.MONGODB_TEST_URI).pathname.slice(1);
+  assert.match(databaseName, /(^|[_-])test(s)?$/i, 'Banco de integração deve terminar em _test ou -test para evitar exclusão acidental.');
   process.env.SESSION_SECRET = 'segredo-exclusivo-de-testes-com-mais-de-32-caracteres';
   await mongoose.connect(process.env.MONGODB_TEST_URI, { serverSelectionTimeoutMS: 10000 });
   const server = app.listen(0);
