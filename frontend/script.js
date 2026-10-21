@@ -30,7 +30,7 @@
       { id: 'B-ESP-02', nome: 'ESP-02', tipo: 'ESP', estado: 'Boa', lat: -22.504766, lng: -48.583882 },
     ];
     
-    // carregar relatos do localStorage (mantemos protótipo)
+    // Relatos públicos são carregados exclusivamente pela API.
     let relatos = [];
     
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -152,7 +152,7 @@
       relatos.forEach(r => {
         const icon = (r.tipo === 'BOIA_DANIFICADA') ? iconBoiaProb : iconPerigo;
         const m = L.marker([r.lat, r.lng], { icon }).addTo(layerRelatos);
-        const info = `<div style="min-width:240px"><b>${escapeHtml(r.titulo || labelTipo(r.tipo))}${r.gravidade ? ' · ' + escapeHtml(r.gravidade) : ''}</b><br>${escapeHtml(r.descricao || '')}<br><span class="muted">Confirmações: ${r.confirmacoes || 0}</span><div class="hr"></div><div style="display:flex;gap:6px"><button class="btn btn-primary" onclick="validarRelato('${r.id}', true)">Sim, continua</button><button class="btn" onclick="validarRelato('${r.id}', false)">Não, resolvido</button></div></div>`;
+        const info = `<div style="min-width:240px"><b>${escapeHtml(r.titulo || labelTipo(r.tipo))}${r.gravidade ? ' · ' + escapeHtml(r.gravidade) : ''}</b><br>${escapeHtml(r.descricao || '')}<br><span class="muted">Confirmações: ${r.confirmacoes || 0}</span></div>`;
         m.bindPopup(info);
       });
     }
@@ -277,9 +277,7 @@
       return 'id-' + Math.random().toString(36).substring(2, 10);
     }
     
-    function saveAll() {
-      localStorage.setItem('relatos', JSON.stringify(relatos));
-    }
+    function saveAll() { /* Persistência e moderação ocorrem no servidor. */ }
     
     // toast simples
     let toastEl = null, toastTimer = null;
