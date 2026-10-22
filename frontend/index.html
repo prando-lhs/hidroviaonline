@@ -29,6 +29,17 @@
       </header>
 
       <div class="group">
+        <label for="tipoMapa"><b>Visão do mapa</b></label>
+        <select id="tipoMapa" aria-label="Selecionar visão do mapa" style="width:100%;margin-top:8px">
+          <option value="satelite">Satélite</option>
+          <option value="padrao">Padrão (ruas e rios)</option>
+          <option value="relevo">Relevo (topográfico)</option>
+        </select>
+        <button id="btnMinhaLocalizacao" class="btn btn-primary" type="button" style="margin-top:10px">Minha localização</button>
+        <p id="gpsStatus" class="tip" role="status" aria-live="polite">Obtendo localização…</p>
+      </div>
+
+      <div class="group">
         <div class="tip"><b>Observação:</b> as posições das boias são <u>aproximações</u>. Use os dados oficiais SIRGAS2000/UTM para precisão operacional.</div>
         <div class="note">As boias foram ajustadas automaticamente para o ponto mais próximo sobre a linha do canal (snap).</div>
       </div>
@@ -66,7 +77,7 @@
       </div>
 
       <div class="group">
-        <div class="tip">Camada de referência: <b>ESRI World Imagery</b> (satélite) para validar visualmente.</div>
+        <div class="tip">Escolha entre satélite (Esri), mapa padrão (OpenStreetMap) e relevo (OpenTopoMap).</div>
         <div class="hr"></div>
         <div class="tip"><p>Esse projeto ainda está em desenvolvimento os dados não são exatos.</p></div>
       </div>
