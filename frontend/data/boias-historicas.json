@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "description": "Registros históricos documentados em aviso da Marinha, não verificados para navegação atual.",
+  "fonte": "Avisos aos Navegantes HT 0071/2013, republicado no folheto HT 01/2016",
+  "fonteUrl": "https://www.marinha.mil.br/chm/sites/www.marinha.mil.br.chm/files/hidrovia-tiete/tiete012016.pdf",
+  "registros": [
+    {
+      "identificador": "BC (ESP) Nº 1",
+      "nome": "BC (ESP) Nº 1",
+      "tipo": "ESP",
+      "lat": -21.01657222,
+      "lng": -51.75995,
+      "trecho": "Rio Paraná, km 235, trecho III",
+      "situacao": "historico_nao_verificado",
+      "dataReferencia": "2013",
+      "observacao": "Sinalização de emissário subaquático. Posição e existência atual não confirmadas."
+    },
+    {
+      "identificador": "BC (ESP) Nº 2",
+      "nome": "BC (ESP) Nº 2",
+      "tipo": "ESP",
+      "lat": -21.01681389,
+      "lng": -51.75970833,
+      "trecho": "Rio Paraná, km 235, trecho III",
+      "situacao": "historico_nao_verificado",
+      "dataReferencia": "2013",
+      "observacao": "Sinalização de emissário subaquático. Posição e existência atual não confirmadas."
+    },
+    {
+      "identificador": "BC (ESP) Nº 3",
+      "nome": "BC (ESP) Nº 3",
+      "tipo": "ESP",
+      "lat": -21.01702222,
+      "lng": -51.75943889,
+      "trecho": "Rio Paraná, km 235, trecho III",
+      "situacao": "historico_nao_verificado",
+      "dataReferencia": "2013",
+      "observacao": "Sinalização de emissário subaquático. Posição e existência atual não confirmadas."
+    }
+  ]
+}
