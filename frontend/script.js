@@ -66,6 +66,30 @@
     /* ===================== camadas e ícones ===================== */
     const layerBoias = L.layerGroup().addTo(map);
     const layerRelatos = L.layerGroup().addTo(map);
+    // Sinalizacao verificada: camada separada das boias demonstrativas.
+    const layerSinaisVerificados = L.layerGroup().addTo(map);
+    async function carregarSinalizacaoVerificada() {
+      try {
+        const response = await fetch('/api/sinalizacao', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Sinalizacao indisponivel');
+        const sinais = await response.json();
+        if (!Array.isArray(sinais)) throw new Error('Resposta invalida');
+        layerSinaisVerificados.clearLayers();
+        for (const sinal of sinais) {
+          const coords = sinal.position?.coordinates;
+          if (!Array.isArray(coords) || coords.length !== 2 ||
+              !coords.every(Number.isFinite) || Math.abs(coords[0]) > 180 || Math.abs(coords[1]) > 90) continue;
+          L.circleMarker([coords[1], coords[0]], {
+            radius: 8, color: '#ffffff', weight: 2, fillColor: '#00bcd4', fillOpacity: 0.9
+          }).bindPopup('<strong>' + escapeHtml(sinal.nome) + '</strong><p>Identificador: ' +
+            escapeHtml(sinal.identificador) + '</p><p>Fonte: ' + escapeHtml(sinal.fonte) +
+            '</p><p>Cadastro verificado pela administracao; nao substitui cartas nauticas oficiais.</p>').addTo(layerSinaisVerificados);
+        }
+      } catch (error) { console.warn('Nao foi possivel atualizar sinalizacao verificada.', error); }
+    }
+    carregarSinalizacaoVerificada();
+    setInterval(carregarSinalizacaoVerificada, 120000);
+
     
     function makeDot(color) {
       return L.divIcon({
