@@ -7,6 +7,7 @@ const PORT = Number(process.env.PORT) || 3000;
 const frontendDir = path.resolve(__dirname, '../frontend');
 const relatoRoutes = require('./routes/relatos');
 const authRoutes = require('./routes/auth');
+const sinalizacaoRoutes = require('./routes/sinalizacao');
 
 app.disable('x-powered-by');
 app.use(express.json({ limit: '100kb' }));
@@ -29,6 +30,7 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/relatos', relatoRoutes);
+app.use('/api/sinalizacao', sinalizacaoRoutes);
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Endpoint não implementado nesta etapa.' });
