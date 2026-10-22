@@ -5,6 +5,16 @@
     const esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'ESRI' }).addTo(map);
     const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'OpenStreetMap' });
     
+    // Troca de base sem alterar as camadas de navegacao.
+    const relevo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors, SRTM | © OpenTopoMap (CC-BY-SA)', maxZoom: 17 });
+    const mapasBase = { satelite: esri, padrao: osm, relevo };
+    document.getElementById('tipoMapa').addEventListener('change', event => {
+      const selecionado = mapasBase[event.target.value];
+      if (!selecionado) return;
+      Object.values(mapasBase).forEach(camada => { if (map.hasLayer(camada)) map.removeLayer(camada); });
+      selecionado.addTo(map);
+    });
+
     // camada que representa o canal (polyline) — aproximação para demonstração
     // sequência de pontos que seguem o leito no trecho Barra Bonita → Jaú (aproximação)
     const canalCoords = [
@@ -66,6 +76,30 @@
     /* ===================== camadas e ícones ===================== */
     const layerBoias = L.layerGroup().addTo(map);
     const layerRelatos = L.layerGroup().addTo(map);
+    // Sinalizacao verificada: camada separada das boias demonstrativas.
+    const layerSinaisVerificados = L.layerGroup().addTo(map);
+    async function carregarSinalizacaoVerificada() {
+      try {
+        const response = await fetch('/api/sinalizacao', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Sinalizacao indisponivel');
+        const sinais = await response.json();
+        if (!Array.isArray(sinais)) throw new Error('Resposta invalida');
+        layerSinaisVerificados.clearLayers();
+        for (const sinal of sinais) {
+          const coords = sinal.position?.coordinates;
+          if (!Array.isArray(coords) || coords.length !== 2 ||
+              !coords.every(Number.isFinite) || Math.abs(coords[0]) > 180 || Math.abs(coords[1]) > 90) continue;
+          L.circleMarker([coords[1], coords[0]], {
+            radius: 8, color: '#ffffff', weight: 2, fillColor: '#00bcd4', fillOpacity: 0.9
+          }).bindPopup('<strong>' + escapeHtml(sinal.nome) + '</strong><p>Identificador: ' +
+            escapeHtml(sinal.identificador) + '</p><p>Fonte: ' + escapeHtml(sinal.fonte) +
+            '</p><p>Cadastro verificado pela administracao; nao substitui cartas nauticas oficiais.</p>').addTo(layerSinaisVerificados);
+        }
+      } catch (error) { console.warn('Nao foi possivel atualizar sinalizacao verificada.', error); }
+    }
+    carregarSinalizacaoVerificada();
+    setInterval(carregarSinalizacaoVerificada, 120000);
+
     
     function makeDot(color) {
       return L.divIcon({
@@ -245,16 +279,12 @@
       const titulo = document.getElementById('titulo').value.trim();
       const descricao = document.getElementById('descricao').value.trim();
       const novo = {
-        id: uid(),
         tipo: t,
         titulo,
         descricao,
         gravidade: g,
         lat: selectedLatLng.lat,
-        lng: selectedLatLng.lng,
-        status: 'ATIVO',
-        confirmacoes: 0,
-        atualizadoEm: Date.now()
+        lng: selectedLatLng.lng
       };
       try {
         const response = await fetch('/api/relatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(novo) });
@@ -301,22 +331,6 @@
     }
     
     /* ===================== Validação de relatos ===================== */
-    function validarRelato(id, persiste) {
-      const idx = relatos.findIndex(r => r.id === id);
-      if (idx === -1) return;
-      if (relatos[idx]._id) { toast('Validação de relatos compartilhados será habilitada após autenticação.'); return; }
-      if (persiste) {
-        relatos[idx].confirmacoes = (relatos[idx].confirmacoes || 0) + 1;
-        relatos[idx].atualizadoEm = Date.now();
-        toast('Confirmação registrada.');
-      } else {
-        relatos.splice(idx, 1);
-        toast('Relato marcado como resolvido e removido.');
-      }
-      saveAll();
-      renderRelatos();
-    }
-    
     function labelTipo(t) {
       return t === 'BOIA_DANIFICADA' ? 'Boia danificada' : t === 'PERIGO' ? 'Perigo' : 'Anomalia';
     }
@@ -361,38 +375,38 @@
       document.getElementById('coords').textContent = `Lat: ${e.latlng.lat.toFixed(6)}, Lng: ${e.latlng.lng.toFixed(6)}`;
     });
     
-/* ===================== GPS com atualização automática ===================== */
-    if (navigator.geolocation) {
-      // Ícone azul simples
-      const gpsIcon = L.divIcon({
-        html: '<div style="width:14px;height:14px;border-radius:50%;background:#007bff;border:2px solid white"></div>',
-        className: '',
-        iconSize: [14, 14]
-      });
-    
-      // Cria marcador vazio
-      let gpsMarker = null;
-    
-      navigator.geolocation.watchPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          if (!gpsMarker) gpsMarker = L.marker([lat, lng], { icon: gpsIcon }).addTo(map);
-          else gpsMarker.setLatLng([lat, lng]);
-        },
-        (err) => {
-          console.error("Erro ao obter localização:", err);
-        },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 5000
-        }
-      );
-    } else {
-      alert("Seu navegador não suporta geolocalização.");
+/* ===================== GPS: centralizacao inicial e acompanhamento ===================== */
+    const gpsStatus = document.getElementById('gpsStatus');
+    const gpsIcon = L.divIcon({ html: '<div style="width:14px;height:14px;border-radius:50%;background:#007bff;border:2px solid white;box-shadow:0 0 0 5px rgba(0,123,255,.2)"></div>', className: '', iconSize: [14, 14], iconAnchor: [7, 7] });
+    let gpsMarker = null, gpsPrecisao = null, centralizarNaPrimeiraPosicao = true, gpsIniciado = false, gpsWatchId = null;
+    function solicitarLocalizacao() {
+      if (!navigator.geolocation) { gpsStatus.textContent = 'GPS nao suportado neste navegador.'; return; }
+      if (!window.isSecureContext) { gpsStatus.textContent = 'GPS requer HTTPS ou localhost.'; return; }
+      if (gpsIniciado) return;
+      gpsIniciado = true;
+      gpsStatus.textContent = 'Aguardando permissao e sinal de GPS…';
+      gpsWatchId = navigator.geolocation.watchPosition(pos => {
+        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        if (!gpsMarker) gpsMarker = L.marker([lat, lng], { icon: gpsIcon, zIndexOffset: 1000 }).addTo(map);
+        else gpsMarker.setLatLng([lat, lng]);
+        if (!gpsPrecisao) gpsPrecisao = L.circle([lat, lng], { radius: accuracy, color: '#007bff', weight: 1, fillOpacity: .08 }).addTo(map);
+        else gpsPrecisao.setLatLng([lat, lng]).setRadius(accuracy);
+        gpsStatus.textContent = 'GPS ativo · precisao aproximada: ' + Math.round(accuracy) + ' m';
+        if (centralizarNaPrimeiraPosicao) { map.setView([lat, lng], 16); centralizarNaPrimeiraPosicao = false; }
+      }, error => {
+        gpsStatus.textContent = error.code === 1 ? 'Localizacao negada. Autorize no navegador e recarregue.' : 'Localizacao indisponivel. Tente novamente.';
+        if (gpsWatchId !== null) navigator.geolocation.clearWatch(gpsWatchId);
+        gpsWatchId = null;
+        gpsIniciado = false;
+      }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 });
     }
-    
+    document.getElementById('btnMinhaLocalizacao').addEventListener('click', () => {
+      if (gpsMarker) { map.setView(gpsMarker.getLatLng(), 16); gpsStatus.textContent = 'Localizacao atual exibida.'; }
+      else { centralizarNaPrimeiraPosicao = true; solicitarLocalizacao(); }
+    });
+    solicitarLocalizacao();
+
     // Defina a projeção SIRGAS2000 UTM zone 22S (31982) — proj4 aceita essa definição
     proj4.defs("EPSG:31982", "+proj=utm +zone=22 +south +datum=SIRGAS2000 +units=m +no_defs");
     

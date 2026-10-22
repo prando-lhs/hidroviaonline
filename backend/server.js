@@ -7,6 +7,7 @@ const PORT = Number(process.env.PORT) || 3000;
 const frontendDir = path.resolve(__dirname, '../frontend');
 const relatoRoutes = require('./routes/relatos');
 const authRoutes = require('./routes/auth');
+const sinalizacaoRoutes = require('./routes/sinalizacao');
 
 app.disable('x-powered-by');
 app.use(express.json({ limit: '100kb' }));
@@ -27,8 +28,24 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', database: mongoose.connection.readyState === 1 ? 'connected' : 'not_connected' });
 });
 
+// Em ambientes serverless, estabelecer conexao antes de atender rotas persistentes.
+let connectionPromise;
+app.use('/api', async (req, res, next) => {
+  if (req.path === '/health' || !['/auth', '/relatos', '/sinalizacao'].some(prefix => req.path === prefix || req.path.startsWith(prefix + '/'))) return next();
+  if (mongoose.connection.readyState === 1) return next();
+  if (!process.env.MONGODB_URI) return res.status(503).json({ error: 'Banco de dados nao configurado.' });
+  try {
+    if (!connectionPromise) {
+      connectionPromise = mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 })
+        .catch(error => { connectionPromise = null; throw error; });
+    }
+    await connectionPromise;
+    next();
+  } catch { res.status(503).json({ error: 'Banco de dados indisponivel.' }); }
+});
 app.use('/api/auth', authRoutes);
 app.use('/api/relatos', relatoRoutes);
+app.use('/api/sinalizacao', sinalizacaoRoutes);
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Endpoint não implementado nesta etapa.' });
