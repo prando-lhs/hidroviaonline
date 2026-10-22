@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('node:path');
 const mongoose = require('mongoose');
+const { classifyMongoError } = require('./db-diagnostics');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -41,7 +42,10 @@ app.use('/api', async (req, res, next) => {
     }
     await connectionPromise;
     next();
-  } catch { res.status(503).json({ error: 'Banco de dados indisponivel.' }); }
+  } catch (error) {
+    console.error('[mongodb] connection_failed category=' + classifyMongoError(error));
+    res.status(503).json({ error: 'Banco de dados indisponivel.' });
+  }
 });
 app.use('/api/auth', authRoutes);
 app.use('/api/relatos', relatoRoutes);
@@ -62,7 +66,7 @@ async function start() {
       await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
       console.log('MongoDB conectado.');
     } catch (error) {
-      console.error('Falha ao conectar MongoDB:', error.message);
+      console.error('[mongodb] startup_connection_failed category=' + classifyMongoError(error));
       process.exitCode = 1;
       return;
     }
