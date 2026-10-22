@@ -32,3 +32,12 @@ test('frontend map controls reference existing elements', () => {
     assert.ok(script.includes("getElementById('" + id + "')"));
   }
 });
+
+test('distinct icons exist for nautical categories and reported hazards', () => {
+  for (const category of ['boia', 'boiaLateral', 'boiaEspecial', 'boiaProblema', 'perigo', 'anomalia', 'verificado']) {
+    assert.match(script, new RegExp(category + ':'));
+  }
+  assert.match(script, /iconSinal\(categoriaBoia\(b\)\)/);
+  assert.match(script, /iconSinal\(categoriaRelato\(r\.tipo\)\)/);
+  assert.match(html, /id="legendaSinais"/);
+});
