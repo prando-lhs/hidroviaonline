@@ -5,6 +5,16 @@
     const esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'ESRI' }).addTo(map);
     const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'OpenStreetMap' });
     
+    // Troca de base sem alterar as camadas de navegacao.
+    const relevo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors, SRTM | © OpenTopoMap (CC-BY-SA)', maxZoom: 17 });
+    const mapasBase = { satelite: esri, padrao: osm, relevo };
+    document.getElementById('tipoMapa').addEventListener('change', event => {
+      const selecionado = mapasBase[event.target.value];
+      if (!selecionado) return;
+      Object.values(mapasBase).forEach(camada => { if (map.hasLayer(camada)) map.removeLayer(camada); });
+      selecionado.addTo(map);
+    });
+
     // camada que representa o canal (polyline) — aproximação para demonstração
     // sequência de pontos que seguem o leito no trecho Barra Bonita → Jaú (aproximação)
     const canalCoords = [
@@ -365,38 +375,36 @@
       document.getElementById('coords').textContent = `Lat: ${e.latlng.lat.toFixed(6)}, Lng: ${e.latlng.lng.toFixed(6)}`;
     });
     
-/* ===================== GPS com atualização automática ===================== */
-    if (navigator.geolocation) {
-      // Ícone azul simples
-      const gpsIcon = L.divIcon({
-        html: '<div style="width:14px;height:14px;border-radius:50%;background:#007bff;border:2px solid white"></div>',
-        className: '',
-        iconSize: [14, 14]
-      });
-    
-      // Cria marcador vazio
-      let gpsMarker = null;
-    
-      navigator.geolocation.watchPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          if (!gpsMarker) gpsMarker = L.marker([lat, lng], { icon: gpsIcon }).addTo(map);
-          else gpsMarker.setLatLng([lat, lng]);
-        },
-        (err) => {
-          console.error("Erro ao obter localização:", err);
-        },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 5000
-        }
-      );
-    } else {
-      alert("Seu navegador não suporta geolocalização.");
+/* ===================== GPS: centralizacao inicial e acompanhamento ===================== */
+    const gpsStatus = document.getElementById('gpsStatus');
+    const gpsIcon = L.divIcon({ html: '<div style="width:14px;height:14px;border-radius:50%;background:#007bff;border:2px solid white;box-shadow:0 0 0 5px rgba(0,123,255,.2)"></div>', className: '', iconSize: [14, 14], iconAnchor: [7, 7] });
+    let gpsMarker = null, gpsPrecisao = null, centralizarNaPrimeiraPosicao = true, gpsIniciado = false;
+    function solicitarLocalizacao() {
+      if (!navigator.geolocation) { gpsStatus.textContent = 'GPS nao suportado neste navegador.'; return; }
+      if (!window.isSecureContext) { gpsStatus.textContent = 'GPS requer HTTPS ou localhost.'; return; }
+      if (gpsIniciado) return;
+      gpsIniciado = true;
+      gpsStatus.textContent = 'Aguardando permissao e sinal de GPS…';
+      navigator.geolocation.watchPosition(pos => {
+        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        if (!gpsMarker) gpsMarker = L.marker([lat, lng], { icon: gpsIcon, zIndexOffset: 1000 }).addTo(map);
+        else gpsMarker.setLatLng([lat, lng]);
+        if (!gpsPrecisao) gpsPrecisao = L.circle([lat, lng], { radius: accuracy, color: '#007bff', weight: 1, fillOpacity: .08 }).addTo(map);
+        else gpsPrecisao.setLatLng([lat, lng]).setRadius(accuracy);
+        gpsStatus.textContent = 'GPS ativo · precisao aproximada: ' + Math.round(accuracy) + ' m';
+        if (centralizarNaPrimeiraPosicao) { map.setView([lat, lng], 16); centralizarNaPrimeiraPosicao = false; }
+      }, error => {
+        gpsStatus.textContent = error.code === 1 ? 'Localizacao negada. Autorize no navegador e recarregue.' : 'Localizacao indisponivel. Tente novamente.';
+        gpsIniciado = false;
+      }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 });
     }
-    
+    document.getElementById('btnMinhaLocalizacao').addEventListener('click', () => {
+      if (gpsMarker) { map.setView(gpsMarker.getLatLng(), 16); gpsStatus.textContent = 'Localizacao atual exibida.'; }
+      else { centralizarNaPrimeiraPosicao = true; solicitarLocalizacao(); }
+    });
+    solicitarLocalizacao();
+
     // Defina a projeção SIRGAS2000 UTM zone 22S (31982) — proj4 aceita essa definição
     proj4.defs("EPSG:31982", "+proj=utm +zone=22 +south +datum=SIRGAS2000 +units=m +no_defs");
     
