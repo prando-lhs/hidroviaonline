@@ -2,6 +2,11 @@ const express = require('express');
 const { authenticate, adminOnly } = require('../auth');
 const SinalNautico = require('../models/SinalNautico');
 const router = express.Router();
+router.use((req, res, next) => {
+  if (require('mongoose').connection.readyState !== 1)
+    return res.status(503).json({ error: 'Banco de dados indisponivel.' });
+  next();
+});
 router.get('/', async (_req, res) => {
   try { res.json(await SinalNautico.find({ verificado: true }).limit(1000).lean()); }
   catch { res.status(500).json({ error: 'Falha ao consultar sinalização.' }); }
