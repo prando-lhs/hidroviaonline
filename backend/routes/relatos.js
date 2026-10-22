@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
+const relatoLimit = require('../middleware/relatoLimit');
 const { authenticate, adminOnly } = require('../auth');
 
 const relatoSchema = new mongoose.Schema({
@@ -30,7 +31,7 @@ router.get('/', async (_req, res) => {
   } catch { res.status(500).json({ error: 'Erro ao consultar relatos.' }); }
 });
 
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, relatoLimit, async (req, res) => {
   try {
     const { tipo, titulo, descricao, gravidade, lat, lng } = req.body || {};
     const r = await Relato.create({ tipo, titulo, descricao, gravidade, lat, lng, autor: req.user._id });
