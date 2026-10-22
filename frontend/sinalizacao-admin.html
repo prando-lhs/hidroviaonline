@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sinalizacao | Hidrovia Online</title>
+<style>
+body{margin:0;padding:24px;font:16px system-ui;background:#071b29;color:#eef6fa}
+main{max-width:1000px;margin:auto}a{color:#8ad9ff}
+section,article{background:#123348;border:1px solid #31596c;border-radius:12px;padding:18px;margin:16px 0}
+label{display:block;margin:10px 0}input,button{font:inherit;padding:10px;border-radius:6px}
+input{display:block;width:min(100%,500px);box-sizing:border-box;background:#071b29;color:white;border:1px solid #557}
+button{cursor:pointer;margin-right:8px}button:disabled{opacity:.5}.muted{color:#b7cad5}
+</style></head>
+<body><main>
+<a href="/index.html">← Voltar ao mapa</a>
+<h1>Administracao da sinalizacao nautica</h1>
+<p class="muted">Sinais so aparecem no mapa publico apos verificacao. Confirme a fonte e as coordenadas antes de aprovar.</p>
+<p id="status" role="status" aria-live="polite">Verificando acesso...</p>
+<section><h2>Novo sinal</h2>
+<form id="newSignal">
+<label>Identificador<input name="identificador" required maxlength="100"></label>
+<label>Nome<input name="nome" required maxlength="150"></label>
+<label>Tipo<input name="tipo" required maxlength="100"></label>
+<label>Fonte / referencia<input name="fonte" required maxlength="300"></label>
+<label>Longitude<input name="longitude" type="number" step="any" min="-180" max="180" required></label>
+<label>Latitude<input name="latitude" type="number" step="any" min="-90" max="90" required></label>
+<button type="submit">Cadastrar para revisao</button>
+</form></section>
+<h2>Sinais cadastrados</h2><div id="signals"></div>
+</main>
+<script>
+const statusEl=document.getElementById('status'),signals=document.getElementById('signals'),form=document.getElementById('newSignal');
+let authorized=false;
+async function api(url,options={}){
+  const response=await fetch(url,{credentials:'same-origin',...options});
+  const data=await response.json();
+  if(!response.ok)throw Error(data.error||'Erro na requisicao');
+  return data;
+}
+async function refresh(){
+  const data=await api('/api/sinalizacao/admin');
+  signals.replaceChildren();
+  if(!data.length){const p=document.createElement('p');p.textContent='Nenhum sinal cadastrado.';signals.append(p)}
+  for(const item of data){
+    const article=document.createElement('article'),h=document.createElement('h3'),info=document.createElement('p'),button=document.createElement('button');
+    h.textContent=item.nome+' ('+item.identificador+')';
+    info.textContent=[item.tipo,item.fonte,item.position?.coordinates?.join(', '),item.verificado?'Verificado':'Pendente'].join(' · ');
+    button.textContent=item.verificado?'Revogar verificacao':'Verificar sinal';
+    button.addEventListener('click',async()=>{
+      button.disabled=true;
+      try{
+        await api('/api/sinalizacao/'+encodeURIComponent(item._id)+'/verificacao',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({verificado:!item.verificado})});
+        statusEl.textContent='Verificacao atualizada.';await refresh();
+      }catch(error){statusEl.textContent=error.message;button.disabled=false}
+    });
+    article.append(h,info,button);signals.append(article);
+  }
+}
+async function init(){
+  try{
+    const me=await api('/api/auth/me');
+    if(me.role!=='admin')throw Error('Acesso restrito a administradores.');
+    authorized=true;statusEl.textContent='Acesso autorizado.';await refresh();
+  }catch(error){statusEl.textContent=error.message;form.querySelector('button').disabled=true}
+}
+form.addEventListener('submit',async(event)=>{
+  event.preventDefault();if(!authorized)return;
+  const button=form.querySelector('button');button.disabled=true;
+  const data=new FormData(form);
+  const payload={identificador:data.get('identificador'),nome:data.get('nome'),tipo:data.get('tipo'),fonte:data.get('fonte'),position:{type:'Point',coordinates:[Number(data.get('longitude')),Number(data.get('latitude'))]}};
+  try{
+    await api('/api/sinalizacao',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    form.reset();statusEl.textContent='Sinal cadastrado para revisao.';await refresh();
+  }catch(error){statusEl.textContent=error.message}finally{button.disabled=false}
+});
+init();
+</script></body></html>
