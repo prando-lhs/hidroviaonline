@@ -1,0 +1,34 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const frontend = path.resolve(__dirname, '../../frontend');
+const html = fs.readFileSync(path.join(frontend, 'index.html'), 'utf8');
+const script = fs.readFileSync(path.join(frontend, 'script.js'), 'utf8');
+
+test('frontend JavaScript has valid syntax', () => {
+  assert.doesNotThrow(() => new Function(script));
+});
+
+test('map selector offers three distinct map types', () => {
+  for (const value of ['satelite', 'padrao', 'relevo']) {
+    assert.match(html, new RegExp('<option value="' + value + '">'));
+  }
+  assert.match(script, /const mapasBase = \{ satelite: esri, padrao: osm, relevo \}/);
+});
+
+test('GPS controls exist and automatic positioning is enabled', () => {
+  assert.match(html, /id="btnMinhaLocalizacao"/);
+  assert.match(html, /id="gpsStatus"/);
+  assert.match(script, /navigator\.geolocation\.watchPosition/);
+  assert.match(script, /solicitarLocalizacao\(\);/);
+  assert.match(script, /map\.setView\(\[lat, lng\], 16\)/);
+});
+
+test('frontend map controls reference existing elements', () => {
+  for (const id of ['tipoMapa', 'btnMinhaLocalizacao', 'gpsStatus']) {
+    assert.ok(html.includes('id="' + id + '"'));
+    assert.ok(script.includes("getElementById('" + id + "')"));
+  }
+});
