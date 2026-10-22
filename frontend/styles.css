@@ -138,3 +138,10 @@ div#coords {
   z-index: 1000; 
   color: #000; 
 }
+
+/* Ícones náuticos: fundo próprio para manter contraste sobre satélite e relevo. */
+.icone-sinal { background: transparent; border: 0; }
+.icone-sinal svg { display: block; filter: drop-shadow(0 2px 3px rgba(0,0,0,.55)); }
+.legenda-sinal { display: flex; align-items: center; gap: 9px; margin: 7px 0; line-height: 1.35; }
+.legenda-sinal > span:first-child { width: 26px; height: 26px; flex: 0 0 26px; }
+.legenda-sinal svg { display: block; width: 26px; height: 26px; }
