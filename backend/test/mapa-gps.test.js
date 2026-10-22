@@ -41,3 +41,16 @@ test('distinct icons exist for nautical categories and reported hazards', () => 
   assert.match(script, /iconSinal\(categoriaRelato\(r\.tipo\)\)/);
   assert.match(html, /id="legendaSinais"/);
 });
+
+test('historical buoy layer is optional and distinct from verified signals', () => {
+  assert.match(html, /id="btnBoiasHistoricas"/);
+  assert.match(script, /L\.layerGroup\(\)/);
+  assert.match(script, /boias-historicas\.json/);
+  assert.match(script, /não verificado para navegação atual/);
+  const catalogo = JSON.parse(fs.readFileSync(path.join(frontend, 'data/boias-historicas.json'), 'utf8'));
+  assert.equal(catalogo.registros.length, 3);
+  for (const registro of catalogo.registros) {
+    assert.equal(registro.situacao, 'historico_nao_verificado');
+    assert.ok(registro.lat < 0 && registro.lng < 0);
+  }
+});

@@ -78,7 +78,55 @@
     const layerRelatos = L.layerGroup().addTo(map);
     // Sinalizacao verificada: camada separada das boias demonstrativas.
     const layerSinaisVerificados = L.layerGroup().addTo(map);
-    async function carregarSinalizacaoVerificada() {
+    // Catálogo documental opt-in: não é sinalização verificada nem fonte de navegação.
+    const layerBoiasHistoricas = L.layerGroup();
+    const btnBoiasHistoricas = document.getElementById('btnBoiasHistoricas');
+    const boiasHistoricasStatus = document.getElementById('boiasHistoricasStatus');
+    let boiasHistoricasCarregadas = false;
+    async function carregarBoiasHistoricas() {
+      if (boiasHistoricasCarregadas) return;
+      const response = await fetch('/data/boias-historicas.json', { cache: 'no-store' });
+      if (!response.ok) throw new Error('Catálogo histórico indisponível');
+      const catalogo = await response.json();
+      if (!Array.isArray(catalogo.registros)) throw new Error('Formato inválido do catálogo');
+      layerBoiasHistoricas.clearLayers();
+      for (const registro of catalogo.registros) {
+        if (!Number.isFinite(registro.lat) || !Number.isFinite(registro.lng) ||
+            Math.abs(registro.lat) > 90 || Math.abs(registro.lng) > 180) continue;
+        const marker = L.circleMarker([registro.lat, registro.lng], {
+          radius: 10, color: '#111827', weight: 2, dashArray: '3 3',
+          fillColor: '#facc15', fillOpacity: 0.8
+        });
+        marker.bindPopup('<strong>' + escapeHtml(registro.identificador) +
+          '</strong><p>Registro histórico (' + escapeHtml(registro.dataReferencia) +
+          '), não verificado para navegação atual.</p><p>' + escapeHtml(registro.trecho) +
+          '</p><p>Fonte: <a href="' + escapeHtml(catalogo.fonteUrl) +
+          '" target="_blank" rel="noopener noreferrer">Aviso aos Navegantes da Marinha</a></p>');
+        marker.addTo(layerBoiasHistoricas);
+      }
+      boiasHistoricasCarregadas = true;
+      boiasHistoricasStatus.textContent = layerBoiasHistoricas.getLayers().length + ' boias históricas documentadas · posições não verificadas.';
+    }
+    btnBoiasHistoricas.addEventListener('click', async () => {
+      if (map.hasLayer(layerBoiasHistoricas)) {
+        map.removeLayer(layerBoiasHistoricas);
+        btnBoiasHistoricas.textContent = 'Boias históricas: ocultas';
+        btnBoiasHistoricas.setAttribute('aria-pressed', 'false');
+        return;
+      }
+      btnBoiasHistoricas.disabled = true;
+      try {
+        await carregarBoiasHistoricas();
+        layerBoiasHistoricas.addTo(map);
+        btnBoiasHistoricas.textContent = 'Boias históricas: visíveis';
+        btnBoiasHistoricas.setAttribute('aria-pressed', 'true');
+      } catch (error) {
+        boiasHistoricasStatus.textContent = 'Não foi possível carregar o catálogo histórico.';
+        console.warn(error);
+      } finally { btnBoiasHistoricas.disabled = false; }
+    });
+
+        async function carregarSinalizacaoVerificada() {
       try {
         const response = await fetch('/api/sinalizacao', { cache: 'no-store' });
         if (!response.ok) throw new Error('Sinalizacao indisponivel');

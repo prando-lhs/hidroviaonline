@@ -25,7 +25,6 @@
     <aside>
       <header>
         <h1>Hidrovia Online</h1>
-        <div class="muted" style="margin-top:4px">Trecho: Barra Bonita — Jaú (aprox.)</div>
       </header>
 
       <div class="group">
@@ -47,11 +46,14 @@
       <div class="group">
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button id="btnBoias" class="btn btn-primary">Boias: mostrar/ocultar</button>
+          <button id="btnBoiasHistoricas" class="btn" type="button" aria-pressed="false">Boias históricas: ocultas</button>
           <button id="btnRelatos" class="btn">Relatos: mostrar/ocultar</button>
           <button id="btnAtualizarRelatos" class="btn" type="button">Atualizar relatos</button>
           <button id="btnAdd" class="btn">Ativar modo de adição</button>
           <button id="btnSnap" class="btn">Re-snap boias (forçar)</button>
         </div>
+        <p class="tip">Boias históricas: registros documentais antigos, sem validação da posição atual. Não utilizar para navegação.</p>
+        <p id="boiasHistoricasStatus" class="tip" role="status" aria-live="polite"></p>
         <p id="relatosStatus" class="tip" role="status" aria-live="polite">Carregando relatos…</p>
         <div class="hr"></div>
         <div id="legendaSinais" class="legend" aria-label="Legenda dos símbolos náuticos"></div>
