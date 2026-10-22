@@ -378,14 +378,14 @@
 /* ===================== GPS: centralizacao inicial e acompanhamento ===================== */
     const gpsStatus = document.getElementById('gpsStatus');
     const gpsIcon = L.divIcon({ html: '<div style="width:14px;height:14px;border-radius:50%;background:#007bff;border:2px solid white;box-shadow:0 0 0 5px rgba(0,123,255,.2)"></div>', className: '', iconSize: [14, 14], iconAnchor: [7, 7] });
-    let gpsMarker = null, gpsPrecisao = null, centralizarNaPrimeiraPosicao = true, gpsIniciado = false;
+    let gpsMarker = null, gpsPrecisao = null, centralizarNaPrimeiraPosicao = true, gpsIniciado = false, gpsWatchId = null;
     function solicitarLocalizacao() {
       if (!navigator.geolocation) { gpsStatus.textContent = 'GPS nao suportado neste navegador.'; return; }
       if (!window.isSecureContext) { gpsStatus.textContent = 'GPS requer HTTPS ou localhost.'; return; }
       if (gpsIniciado) return;
       gpsIniciado = true;
       gpsStatus.textContent = 'Aguardando permissao e sinal de GPS…';
-      navigator.geolocation.watchPosition(pos => {
+      gpsWatchId = navigator.geolocation.watchPosition(pos => {
         const { latitude: lat, longitude: lng, accuracy } = pos.coords;
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
         if (!gpsMarker) gpsMarker = L.marker([lat, lng], { icon: gpsIcon, zIndexOffset: 1000 }).addTo(map);
@@ -396,6 +396,8 @@
         if (centralizarNaPrimeiraPosicao) { map.setView([lat, lng], 16); centralizarNaPrimeiraPosicao = false; }
       }, error => {
         gpsStatus.textContent = error.code === 1 ? 'Localizacao negada. Autorize no navegador e recarregue.' : 'Localizacao indisponivel. Tente novamente.';
+        if (gpsWatchId !== null) navigator.geolocation.clearWatch(gpsWatchId);
+        gpsWatchId = null;
         gpsIniciado = false;
       }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 });
     }
