@@ -1,0 +1,9 @@
+{
+  "name": "Hidrovia Online",
+  "short_name": "Hidrovia",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b2030",
+  "theme_color": "#0b6380",
+  "icons": []
+}
