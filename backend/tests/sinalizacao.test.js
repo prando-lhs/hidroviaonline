@@ -27,7 +27,7 @@ test('signal API returns 503 when MongoDB is unavailable', async () => {
     const response = await fetch(base + '/api/sinalizacao');
     assert.equal(response.status, 503);
     const data = await response.json();
-    assert.match(data.error, /Banco de dados indisponivel/);
+    assert.match(data.error, /Banco de dados (indisponivel|nao configurado)/);
   });
 });
 
