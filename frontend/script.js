@@ -245,16 +245,12 @@
       const titulo = document.getElementById('titulo').value.trim();
       const descricao = document.getElementById('descricao').value.trim();
       const novo = {
-        id: uid(),
         tipo: t,
         titulo,
         descricao,
         gravidade: g,
         lat: selectedLatLng.lat,
-        lng: selectedLatLng.lng,
-        status: 'ATIVO',
-        confirmacoes: 0,
-        atualizadoEm: Date.now()
+        lng: selectedLatLng.lng
       };
       try {
         const response = await fetch('/api/relatos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(novo) });
@@ -301,7 +297,7 @@
     }
     
     /* ===================== Validação de relatos ===================== */
-    function validarRelato(id, persiste) {
+    function validarRelatoLegadoDesativado(id, persiste) {
       const idx = relatos.findIndex(r => r.id === id);
       if (idx === -1) return;
       if (relatos[idx]._id) { toast('Validação de relatos compartilhados será habilitada após autenticação.'); return; }
