@@ -31,7 +31,7 @@ app.get('/api/health', (_req, res) => {
 // Em ambientes serverless, estabelecer conexao antes de atender rotas persistentes.
 let connectionPromise;
 app.use('/api', async (req, res, next) => {
-  if (req.path === '/health') return next();
+  if (req.path === '/health' || !['/auth', '/relatos', '/sinalizacao'].some(prefix => req.path === prefix || req.path.startsWith(prefix + '/'))) return next();
   if (mongoose.connection.readyState === 1) return next();
   if (!process.env.MONGODB_URI) return res.status(503).json({ error: 'Banco de dados nao configurado.' });
   try {
