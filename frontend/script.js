@@ -89,9 +89,7 @@
           const coords = sinal.position?.coordinates;
           if (!Array.isArray(coords) || coords.length !== 2 ||
               !coords.every(Number.isFinite) || Math.abs(coords[0]) > 180 || Math.abs(coords[1]) > 90) continue;
-          L.circleMarker([coords[1], coords[0]], {
-            radius: 8, color: '#ffffff', weight: 2, fillColor: '#00bcd4', fillOpacity: 0.9
-          }).bindPopup('<strong>' + escapeHtml(sinal.nome) + '</strong><p>Identificador: ' +
+          L.marker([coords[1], coords[0]], { icon: iconSinal('verificado') }).bindPopup('<strong>' + escapeHtml(sinal.nome) + '</strong><p>Identificador: ' +
             escapeHtml(sinal.identificador) + '</p><p>Fonte: ' + escapeHtml(sinal.fonte) +
             '</p><p>Cadastro verificado pela administracao; nao substitui cartas nauticas oficiais.</p>').addTo(layerSinaisVerificados);
         }
@@ -101,18 +99,65 @@
     setInterval(carregarSinalizacaoVerificada, 120000);
 
     
-    function makeDot(color) {
-      return L.divIcon({
-        html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,0.9)"></div>`,
-        className: '',
-        iconSize: [16, 16]
+    // Simbolos SVG locais, sem bibliotecas externas ou imagens de terceiros.
+    // Cores e formatos diferentes permitem reconhecer a categoria sem depender apenas da cor.
+    const simbolos = {
+      boia: '<path d="M16 4v5M12 9h8l3 13H9l3-13Z"/><path d="M10 17h12M13 9V6h6v3"/>',
+      boiaLateral: '<path d="M16 4v5M11 9h10l2 13H9l2-13Z"/><path d="M9 16h14M12 9V6h8v3"/>',
+      boiaEspecial: '<path d="M16 3v7M11 5l10 6M21 5 11 11"/><path d="M11 12h10l2 11H9l2-11Z"/>',
+      boiaProblema: '<path d="M13 9h6l2 12H11l2-12Z"/><path d="M16 4v5M16 13v4M16 19h.01"/>',
+      perigo: '<path d="m16 4 13 23H3L16 4Z"/><path d="M16 12v7M16 23h.01"/>',
+      anomalia: '<path d="M16 3 29 16 16 29 3 16 16 3Z"/><path d="M16 10v9M16 23h.01"/>',
+      verificado: '<path d="M16 3v6M11 9h10l2 13H9l2-13Z"/><path d="m12 16 3 3 6-6"/>'
+    };
+    const coresSimbolos = {
+      boia: '#16a34a', boiaLateral: '#2563eb', boiaEspecial: '#a855f7',
+      boiaProblema: '#dc2626', perigo: '#f59e0b', anomalia: '#64748b', verificado: '#0891b2'
+    };
+    function svgSinal(categoria) {
+      const chave = Object.hasOwn(simbolos, categoria) ? categoria : 'anomalia';
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" role="img" aria-hidden="true">' +
+        '<circle cx="16" cy="16" r="15" fill="' + coresSimbolos[chave] + '" stroke="#fff" stroke-width="2"/>' +
+        '<g fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">' + simbolos[chave] + '</g></svg>';
+    }
+    function iconSinal(categoria) {
+      return L.divIcon({ html: svgSinal(categoria), className: 'icone-sinal', iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -17] });
+    }
+    function categoriaBoia(boia) {
+      if (!String(boia.estado || '').toLowerCase().includes('boa')) return 'boiaProblema';
+      if (boia.tipo === 'ESP') return 'boiaEspecial';
+      if (boia.tipo === 'EB') return 'boiaLateral';
+      return 'boia';
+    }
+    function categoriaRelato(tipo) {
+      if (tipo === 'BOIA_DANIFICADA') return 'boiaProblema';
+      if (tipo === 'PERIGO') return 'perigo';
+      return 'anomalia';
+    }
+    const legenda = document.getElementById('legendaSinais');
+    if (legenda) {
+      const itens = [
+        ['boia', 'Boia de balizamento (demonstração)'],
+        ['boiaLateral', 'Boia lateral (demonstração)'],
+        ['boiaEspecial', 'Boia especial (demonstração)'],
+        ['boiaProblema', 'Boia danificada / com problema'],
+        ['perigo', 'Perigo à navegação'],
+        ['anomalia', 'Anomalia reportada'],
+        ['verificado', 'Sinal cadastrado e verificado']
+      ];
+      itens.forEach(([categoria, nome]) => {
+        const linha = document.createElement('div');
+        linha.className = 'legenda-sinal';
+        const simbolo = document.createElement('span');
+        simbolo.innerHTML = svgSinal(categoria);
+        const rotulo = document.createElement('span');
+        rotulo.textContent = nome;
+        linha.append(simbolo, rotulo);
+        legenda.appendChild(linha);
       });
     }
-    const iconBoiaOk = makeDot('#10b981');
-    const iconBoiaProb = makeDot('#ef4444');
-    const iconPerigo = makeDot('#f59e0b');
-    
-    /* ===================== Função: ponto mais próximo em polilinha (snap) =====================
+
+        /* ===================== Função: ponto mais próximo em polilinha (snap) =====================
        Implementação simples: para cada segmento [A,B], calcule a projeção do ponto P na
        reta AB, limite ao segmento, calcule distância e selecione o ponto com menor distância.
        Retorna {lat,lng,distMeters}.
@@ -190,7 +235,7 @@
       boiaMarkers.clear();
       const snapped = snapBoiasToCanal();
       snapped.forEach(b => {
-        const icon = (b.estado && b.estado.toLowerCase().includes('boa')) ? iconBoiaOk : iconBoiaProb;
+        const icon = iconSinal(categoriaBoia(b));
         const marker = L.marker([b.lat, b.lng], { icon }).addTo(layerBoias);
         let html = `<div style="min-width:220px"><b>${escapeHtml(b.nome)}</b><br>Tipo: ${escapeHtml(b.tipo)} · Estado: ${escapeHtml(b.estado || 'Indefinido')}<br>`;
         if (b.snapped) html += `<span class="muted">Snap ao canal: ${b.snapDist} m</span><br>`;
@@ -204,7 +249,7 @@
     function renderRelatos() {
       layerRelatos.clearLayers();
       relatos.forEach(r => {
-        const icon = (r.tipo === 'BOIA_DANIFICADA') ? iconBoiaProb : iconPerigo;
+        const icon = iconSinal(categoriaRelato(r.tipo));
         const m = L.marker([r.lat, r.lng], { icon }).addTo(layerRelatos);
         const info = `<div style="min-width:240px"><b>${escapeHtml(r.titulo || labelTipo(r.tipo))}${r.gravidade ? ' · ' + escapeHtml(r.gravidade) : ''}</b><br>${escapeHtml(r.descricao || '')}<br><span class="muted">Confirmações: ${Number(r.confirmacoes) || 0}</span><div style="display:flex;gap:6px;margin-top:10px"><button class="btn btn-primary" type="button" data-resposta="CONFIRMA">Continua</button><button class="btn" type="button" data-resposta="NAO_CONFIRMA">Não continua</button></div></div>`;
         m.bindPopup(info);
@@ -365,7 +410,7 @@
     }
     
     /* ===================== Check visual / satélite note ===================== */
-    L.control.attribution({ prefix: false }).addAttribution('Camada satélite: ESRI World Imagery').addTo(map);
+    // As atribuições das camadas base são gerenciadas pelo Leaflet.
     
     /* ===================== Ajuste inicial de zoom para exibir o trecho ===================== */
     map.fitBounds(canalLine.getBounds().pad(0.5));
